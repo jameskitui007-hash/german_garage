@@ -7,7 +7,7 @@ import os
 load_dotenv()
 
 # Import routers
-from app.routers import auth, products, orders ,customers, suppliers, settings, dashboard, reports
+from app.routers import auth, products, orders ,customers, suppliers, settings, dashboard, reports,logs
 
 
 app = FastAPI(
@@ -35,6 +35,7 @@ app.include_router(suppliers.router)
 app.include_router(settings.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
+app.include_router(logs.router)
 
 
 
