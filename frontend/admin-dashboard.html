@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Mercedes & BMW Parts</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <!-- Admin Header -->
+  <header class="admin-header">
+    <div class="admin-header-container">
+      <div class="admin-brand">
+        <div class="admin-logo">
+          <i class="fas fa-tools"></i>
+        </div>
+        <div>
+          <h1>PARTS ADMIN</h1>
+          <p class="admin-subtitle">Mercedes & BMW Specialist Garage</p>
+        </div>
+      </div>
+      
+      <div class="admin-user-info">
+        <div class="user-avatar">
+          <i class="fas fa-user-shield"></i>
+        </div>
+        <div class="user-details">
+          <span class="user-name" id="adminName">Loading...</span>
+          <span class="user-role" id="adminRole">Admin</span>
+        </div>
+        <button class="logout-btn" onclick="logoutAdmin()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Admin Navigation -->
+  <nav class="admin-nav">
+    <div class="admin-nav-container">
+      <ul class="admin-nav-menu">
+        <li><a href="#dashboard" class="nav-active" onclick="loadSection('dashboard')">
+          <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a></li>
+        <li><a href="#inventory" onclick="loadSection('inventory')">
+          <i class="fas fa-boxes"></i> Inventory
+        </a></li>
+        <li><a href="#orders" onclick="loadSection('orders')">
+          <i class="fas fa-shopping-cart"></i> Orders
+        </a></li>
+        <li><a href="#customers" onclick="loadSection('customers')">
+          <i class="fas fa-users"></i> Customers
+        </a></li>
+        <li><a href="#reports" onclick="loadSection('reports')">
+          <i class="fas fa-chart-bar"></i> Reports
+        </a></li>
+        <li><a href="#suppliers" onclick="loadSection('suppliers')">
+          <i class="fas fa-truck"></i> Suppliers
+        </a></li>
+        <li><a href="#settings" onclick="loadSection('settings')">
+          <i class="fas fa-cog"></i> Settings
+        </a></li>
+      </ul>
+      
+      <div class="admin-quick-stats">
+        <div class="quick-stat">
+          <span class="stat-label">Low Stock</span>
+          <span class="stat-value" id="lowStockCount">0</span>
+        </div>
+        <div class="quick-stat">
+          <span class="stat-label">Pending Orders</span>
+          <span class="stat-value" id="pendingOrdersCount">0</span>
+        </div>
+        <div class="quick-stat">
+          <span class="stat-label">Today's Revenue</span>
+          <span class="stat-value" id="todayRevenue">KES 0</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="admin-main">
+    <div class="admin-container">
+      <!-- Dashboard will load here -->
+      <div id="content-area">
+        <div class="loading-content">
+          <i class="fas fa-spinner fa-spin"></i> Loading Dashboard...
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="admin-footer">
+    <div class="admin-footer-container">
+      <div class="footer-info">
+        <p><i class="fas fa-lock"></i> Secure Admin Panel v1.0</p>
+        <p><i class="fas fa-clock"></i> Last Login: <span id="lastLoginTime">--:--</span></p>
+      </div>
+      <div class="footer-actions">
+        <button class="btn-small" onclick="refreshData()">
+          <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <button class="btn-small" onclick="exportAllData()">
+          <i class="fas fa-download"></i> Export Data
+        </button>
+        <button class="btn-small" onclick="showSystemInfo()">
+          <i class="fas fa-info-circle"></i> System Info
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modal Container -->
+  <div id="modal-container"></div>
+
+  <!-- Scripts -->
+  <script src="admin.js"></script>
+  <script>
+    // Check authentication
+    const session = JSON.parse(localStorage.getItem('adminSession'));
+    if (!session || localStorage.getItem('adminLoggedIn') !== 'true') {
+      window.location.href = 'admin-login.html';
+    } else {
+      document.getElementById('adminName').textContent = session.name;
+      document.getElementById('adminRole').textContent = session.role;
+      document.getElementById('lastLoginTime').textContent = 
+        new Date(session.loginTime).toLocaleTimeString();
+    }
+    
+    // Load dashboard on startup
+    document.addEventListener('DOMContentLoaded', function() {
+      loadSection('dashboard');
+      updateQuickStats();
+    });
+    
+    function logoutAdmin() {
+      // Log logout activity
+      logAdminActivity('logout', 'Admin logged out');
+      
+      // Clear session
+      localStorage.removeItem('adminSession');
+      localStorage.removeItem('adminLoggedIn');
+      
+      // Redirect to login
+      window.location.href = 'admin-login.html';
+    }
+    
+    function logAdminActivity(action, details) {
+      const logs = JSON.parse(localStorage.getItem('adminLogs')) || [];
+      logs.push({
+        timestamp: new Date().toISOString(),
+        action: action,
+        details: details,
+        user: session ? session.username : 'unknown'
+      });
+      
+      if (logs.length > 1000) logs.shift();
+      localStorage.setItem('adminLogs', JSON.stringify(logs));
+    }
+  </script>
+</body>
+</html>

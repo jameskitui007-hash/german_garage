@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Inventory Setup</title>
+  <style>
+    .inventory-setup {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 2rem;
+    }
+    .upload-area {
+      border: 3px dashed #ccc;
+      padding: 3rem;
+      text-align: center;
+      margin: 2rem 0;
+    }
+    .template-download {
+      background: #f5f5f5;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    .inventory-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    .summary-card {
+      background: white;
+      padding: 1.5rem;
+      border-left: 4px solid #c40000;
+    }
+  </style>
+</head>
+<body>
+  <div class="inventory-setup">
+    <h1>Inventory Management</h1>
+    
+    <div class="template-download">
+      <h3>Download CSV Template</h3>
+      <p>Use this template to upload your inventory</p>
+      <button onclick="downloadTemplate()">Download Template.csv</button>
+    </div>
+    
+    <div class="upload-area" id="dropArea">
+      <h3>Upload Inventory CSV</h3>
+      <p>Drag & drop your CSV file or click to browse</p>
+      <input type="file" id="csvFile" accept=".csv" onchange="handleFileUpload(this.files[0])">
+      <p><small>CSV should contain: SKU, Name, Brand, Category, OEM#, Price, Cost, Stock, MinStock, Location, Supplier</small></p>
+    </div>
+    
+    <div class="inventory-summary" id="inventorySummary">
+      <!-- Dynamic summary will appear here -->
+    </div>
+    
+    <div class="current-inventory">
+      <h3>Current Inventory</h3>
+      <button onclick="exportInventory()">Export Current Inventory</button>
+      <div id="inventoryTable"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Inventory setup functions
+    function downloadTemplate() {
+      const template = `SKU,Name,Brand,Category,OEM Number,Price,Cost,Stock,Min Stock,Location,Supplier
+MB-OF-001,Mercedes Oil Filter,mercedes,filters,A 642 180 02 00,5200,3800,12,5,Shelf A-12,Mercedes-Benz
+BMW-BP-001,BMW Brake Pads,bmw,brakes,34 11 6 792 586,18500,13500,8,3,Shelf B-07,Brembo`;
+      
+      const blob = new Blob([template], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'inventory-template.csv';
+      a.click();
+    }
+    
+    function handleFileUpload(file) {
+      importInventoryFromCSV(file);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Upload Product Images</title>
+  <style>
+    .upload-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+    }
+    .image-preview {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    .preview-item {
+      border: 1px solid #ddd;
+      padding: 1rem;
+      text-align: center;
+    }
+    .preview-item img {
+      max-width: 100%;
+      height: 120px;
+      object-fit: cover;
+    }
+    .upload-area {
+      border: 3px dashed #c40000;
+      padding: 3rem;
+      text-align: center;
+      background: #f9f9f9;
+      margin: 2rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="upload-container">
+    <h1>Upload Product Images</h1>
+    
+    <div class="product-selector">
+      <select id="productSelect">
+        <option value="">Select Product</option>
+        <!-- Options populated from products -->
+      </select>
+    </div>
+    
+    <div class="upload-area" id="dropZone">
+      <h3>Drag & Drop Images Here</h3>
+      <p>or click to browse</p>
+      <input type="file" id="imageUpload" multiple accept="image/*">
+      <p><small>Recommended: 800x600px, JPG or PNG format</small></p>
+    </div>
+    
+    <div class="image-preview" id="previewContainer"></div>
+    
+    <button onclick="uploadImages()">Upload All Images</button>
+  </div>
+  
+  <script>
+    let selectedProduct = '';
+    let imagesToUpload = [];
+    
+    // Populate product dropdown
+    const products = JSON.parse(localStorage.getItem('inventory')) || [];
+    const select = document.getElementById('productSelect');
+    products.forEach(product => {
+      const option = document.createElement('option');
+      option.value = product.id;
+      option.textContent = `${product.sku} - ${product.name}`;
+      select.appendChild(option);
+    });
+    
+    select.addEventListener('change', (e) => {
+      selectedProduct = e.target.value;
+      loadExistingImages(selectedProduct);
+    });
+    
+    // Handle file selection
+    document.getElementById('imageUpload').addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      previewImages(files);
+    });
+    
+    function previewImages(files) {
+      const container = document.getElementById('previewContainer');
+      container.innerHTML = '';
+      
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const div = document.createElement('div');
+          div.className = 'preview-item';
+          div.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <p>${file.name}</p>
+            <input type="text" placeholder="Caption (optional)" class="image-caption">
+          `;
+          container.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      imagesToUpload = files;
+    }
+    
+    function uploadImages() {
+      if (!selectedProduct) {
+        alert('Please select a product first');
+        return;
+      }
+      
+      const product = products.find(p => p.id === selectedProduct);
+      if (!product) return;
+      
+      // Simulate upload - in reality, you'd upload to server
+      const captions = Array.from(document.querySelectorAll('.image-caption'))
+        .map(input => input.value);
+      
+      // Update product with new images
+      if (!product.images) product.images = [];
+      
+      imagesToUpload.forEach((file, index) => {
+        const imageName = `${product.sku}-${Date.now()}-${index}.jpg`;
+        product.images.push(imageName);
+        
+        // Here you would actually upload the file to your server
+        console.log(`Uploading ${file.name} as ${imageName}`);
+      });
+      
+      // Save updated products
+      localStorage.setItem('inventory', JSON.stringify(products));
+      alert('Images uploaded successfully!');
+      loadExistingImages(selectedProduct);
+    }
+    
+    function loadExistingImages(productId) {
+      const product = products.find(p => p.id === productId);
+      if (!product || !product.images) return;
+      
+      const container = document.getElementById('previewContainer');
+      const existingDiv = document.createElement('div');
+      existingDiv.innerHTML = '<h4>Existing Images:</h4>';
+      
+      product.images.forEach(imageName => {
+        // Assuming images are stored in a specific directory structure
+        const imageUrl = `/parts-images/${product.brand}/${product.category}/${imageName}`;
+        existingDiv.innerHTML += `
+          <div class="preview-item">
+            <img src="${imageUrl}" alt="${product.name}">
+            <p>${imageName}</p>
+            <button onclick="deleteImage('${productId}', '${imageName}')">Delete</button>
+          </div>
+        `;
+      });
+      
+      container.appendChild(existingDiv);
+    }
+    
+    function deleteImage(productId, imageName) {
+      if (confirm('Delete this image?')) {
+        const product = products.find(p => p.id === productId);
+        if (product && product.images) {
+          product.images = product.images.filter(img => img !== imageName);
+          localStorage.setItem('inventory', JSON.stringify(products));
+          loadExistingImages(productId);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercedes & BMW Parts Shop Nairobi | Online Store</title>
+  <meta name="description" content="Shop genuine Mercedes & BMW parts online in Nairobi. Brakes, filters, sensors, control modules, and more with VIN verification.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AutoPartsStore",
+  "name": "Mercedes & BMW Parts Shop",
+  "image": "https://yourwebsite.com/logo.png",
+  "@id": "https://yourwebsite.com/parts-shop",
+  "url": "https://yourwebsite.com/parts-shop.html",
+  "telephone": "+254XXXXXXXXX",
+  "priceRange": "$$",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Nairobi, Kenya",
+    "addressLocality": "Nairobi",
+    "postalCode": "00100",
+    "addressCountry": "KE"
+  },
+  "hasOfferCatalog": {
+    "@type": "OfferCatalog",
+    "name": "Auto Parts",
+    "itemListElement": []
+  }
+}
+</script>
+</head>
+<body>
+
+<header>
+  <div class="header-container">
+    <div class="logo">
+      <h1>MERCEDES & BMW SPECIALISTS</h1>
+      <p class="tagline">Nairobi</p>
+    </div>
+    <button class="menu-toggle" aria-label="Toggle menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="diagnostics.html">Diagnostics</a>
+      <a href="key-programming.html">Key Programming</a>
+      <a href="ecu-programming.html">ECU Programming</a>
+      <a href="sourcing.html">Parts Sourcing</a>
+      <a href="parts-shop.html" class="active">Parts Shop</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-content">
+    <h2 class="hero-title">Online Parts Store</h2>
+    <p class="hero-subtitle">Genuine & OEM Parts for Mercedes & BMW</p>
+  </div>
+</section>
+
+<div class="container shop-container">
+  <div class="shop-sidebar">
+    <div class="filter-section">
+      <h3>Filter Parts</h3>
+      
+      <div class="filter-group">
+        <h4>Brand</h4>
+        <label class="filter-option">
+          <input type="checkbox" name="brand" value="mercedes" checked>
+          <span>Mercedes-Benz</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="brand" value="bmw" checked>
+          <span>BMW</span>
+        </label>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Category</h4>
+        <label class="filter-option">
+          <input type="checkbox" name="category" value="brakes">
+          <span>Brake Parts</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="category" value="engine">
+          <span>Engine Parts</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="category" value="filters">
+          <span>Filters & Fluids</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="category" value="suspension">
+          <span>Suspension</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="category" value="electrical">
+          <span>Electrical</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="category" value="body">
+          <span>Body Parts</span>
+        </label>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Part Type</h4>
+        <label class="filter-option">
+          <input type="checkbox" name="type" value="genuine">
+          <span>Genuine Parts</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="type" value="oem">
+          <span>OEM Parts</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="type" value="aftermarket">
+          <span>Quality Aftermarket</span>
+        </label>
+      </div>
+      
+      <div class="filter-group">
+        <h4>Price Range</h4>
+        <div class="price-slider">
+          <input type="range" min="0" max="50000" value="50000" class="price-range">
+          <div class="price-labels">
+            <span>KES 0</span>
+            <span>KES 50,000+</span>
+          </div>
+        </div>
+      </div>
+      
+      <button class="filter-btn" onclick="applyFilters()">Apply Filters</button>
+      <button class="filter-btn secondary" onclick="resetFilters()">Reset All</button>
+    </div>
+    
+    <div class="vin-checker">
+      <h3>VIN Compatibility Check</h3>
+      <p>Enter your VIN to verify part compatibility:</p>
+      <input type="text" id="vin-input" placeholder="WDD2050001A123456" maxlength="17">
+      <button onclick="checkVin()" class="vin-btn">Check Compatibility</button>
+      <div id="vin-result" class="vin-result"></div>
+    </div>
+  </div>
+  
+  <div class="shop-main">
+    <div class="shop-header">
+      <h2>Featured Parts</h2>
+      <div class="sort-options">
+        <select id="sort-by">
+          <option value="featured">Featured</option>
+          <option value="price-low">Price: Low to High</option>
+          <option value="price-high">Price: High to Low</option>
+          <option value="newest">Newest First</option>
+          <option value="popular">Most Popular</option>
+        </select>
+        <span class="results-count">Showing <span id="results-count">12</span> products</span>
+      </div>
+    </div>
+    
+    <div class="products-grid" id="products-grid">
+      <!-- Products will be loaded here by JavaScript -->
+    </div>
+    
+    <div class="pagination">
+      <button class="page-btn" onclick="changePage(-1)">← Previous</button>
+      <span class="page-numbers">
+        <span class="current-page">1</span> of <span class="total-pages">3</span>
+      </span>
+      <button class="page-btn" onclick="changePage(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cart Sidebar -->
+<div class="cart-sidebar" id="cart-sidebar">
+  <div class="cart-header">
+    <h3>Your Cart</h3>
+    <button class="close-cart" onclick="toggleCart()">×</button>
+  </div>
+  <div class="cart-items" id="cart-items">
+    <!-- Cart items will be loaded here -->
+    <div class="empty-cart">Your cart is empty</div>
+  </div>
+  <div class="cart-summary">
+    <div class="cart-total">
+      <span>Subtotal:</span>
+      <span id="cart-subtotal">KES 0</span>
+    </div>
+    <div class="cart-total">
+      <span>Shipping:</span>
+      <span id="cart-shipping">KES 500</span>
+    </div>
+    <div class="cart-total grand-total">
+      <span>Total:</span>
+      <span id="cart-grand-total">KES 500</span>
+    </div>
+    <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout</button>
+    <p class="shipping-note">Free shipping for orders over KES 15,000 in Nairobi</p>
+  </div>
+</div>
+
+<!-- Cart Toggle Button -->
+<button class="cart-toggle" onclick="toggleCart()" aria-label="Open cart">
+  🛒 <span class="cart-count" id="cart-count">0</span>
+</button>
+
+<!-- Quick Order Modal -->
+<div class="modal" id="quick-order-modal">
+  <div class="modal-content">
+    <button class="close-modal" onclick="closeModal()">×</button>
+    <h3>Quick Order - <span id="modal-part-name"></span></h3>
+    <div class="modal-body">
+      <div class="modal-part-info">
+        <img id="modal-part-image" src="" alt="">
+        <div>
+          <p id="modal-part-desc"></p>
+          <p><strong>Price: </strong><span id="modal-part-price"></span></p>
+          <p><strong>Stock: </strong><span id="modal-part-stock"></span></p>
+        </div>
+      </div>
+      
+      <div class="order-form">
+        <h4>Order Details</h4>
+        <div class="form-group">
+          <label>Quantity:</label>
+          <div class="quantity-selector">
+            <button onclick="updateQuantity(-1)">-</button>
+            <input type="number" id="order-quantity" value="1" min="1" max="10">
+            <button onclick="updateQuantity(1)">+</button>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Delivery Option:</label>
+          <select id="delivery-option">
+            <option value="pickup">Pickup from Garage (Free)</option>
+            <option value="nairobi">Delivery within Nairobi (KES 500)</option>
+            <option value="outside">Delivery outside Nairobi (KES 1,500+)</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Your VIN (Optional):</label>
+          <input type="text" id="order-vin" placeholder="For compatibility verification">
+        </div>
+        
+        <div class="order-summary">
+          <h5>Order Summary</h5>
+          <div class="summary-line">
+            <span>Parts Total:</span>
+            <span id="summary-parts">KES 0</span>
+          </div>
+          <div class="summary-line">
+            <span>Shipping:</span>
+            <span id="summary-shipping">KES 0</span>
+          </div>
+          <div class="summary-line total">
+            <span>Total:</span>
+            <span id="summary-total">KES 0</span>
+          </div>
+        </div>
+        
+        <button class="add-to-cart-btn" onclick="addToCartFromModal()">Add to Cart</button>
+        <button class="whatsapp-order-btn" onclick="orderViaWhatsApp()">
+          Order via WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="cta-section">
+  <div class="cta">
+    <h2>Need Help Finding Parts?</h2>
+    <p>Send us your VIN for personalized parts recommendations</p>
+    <a href="https://wa.me/254XXXXXXXXX" class="cta-button">WhatsApp Our Parts Specialist</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-content">
+    <div class="footer-info">
+      <h3>Mercedes & BMW Specialist Garage</h3>
+      <p>Professional diagnostics and programming services for Mercedes-Benz and BMW in Nairobi</p>
+    </div>
+    <div class="footer-links">
+      <h4>Shop</h4>
+      <ul>
+        <li><a href="parts-shop.html">All Parts</a></li>
+        <li><a href="parts-shop.html?category=brakes">Brake Parts</a></li>
+        <li><a href="parts-shop.html?category=filters">Filters & Fluids</a></li>
+        <li><a href="parts-shop.html?category=engine">Engine Parts</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>Services</h4>
+      <ul>
+        <li><a href="diagnostics.html">Diagnostics</a></li>
+        <li><a href="key-programming.html">Key Programming</a></li>
+        <li><a href="ecu-programming.html">ECU Programming</a></li>
+        <li><a href="sourcing.html">Parts Sourcing</a></li>
+      </ul>
+    </div>
+    <div class="footer-brands">
+      <h4>Brands</h4>
+      <p>Mercedes-Benz • BMW</p>
+      <div class="payment-methods">
+        <span>M-Pesa</span>
+        <span>Visa/Mastercard</span>
+        <span>Cash on Pickup</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 Mercedes & BMW Specialist Garage Nairobi. All rights reserved.</p>
+  </div>
+</footer>
+
+<script src="shop.js"></script>
+<script>
+  const menuToggle = document.querySelector('.menu-toggle');
+  const nav = document.querySelector('nav');
+  
+  menuToggle.addEventListener('click', () => {
+    nav.classList.toggle('active');
+    menuToggle.classList.toggle('active');
+  });
+  
+  // Load products on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    loadProducts();
+    updateCartCount();
+  });
+</script>
+</body>
+</html>

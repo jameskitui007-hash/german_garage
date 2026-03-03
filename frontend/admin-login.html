@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | Mercedes & BMW Parts</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Work Sans', sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .login-container {
+      background: white;
+      padding: 3rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .brand-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .brand-header h1 {
+      font-family: 'Oswald', sans-serif;
+      color: #0a0a0a;
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .brand-header p {
+      color: #c40000;
+      font-size: 0.9rem;
+      letter-spacing: 2px;
+    }
+    
+    .login-form .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .login-form label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #333;
+      font-size: 0.9rem;
+    }
+    
+    .login-form input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    
+    .login-form input:focus {
+      outline: none;
+      border-color: #c40000;
+    }
+    
+    .login-btn {
+      width: 100%;
+      padding: 1rem;
+      background: #c40000;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .login-btn:hover {
+      background: #a30000;
+    }
+    
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 0.8rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      text-align: center;
+      display: none;
+    }
+    
+    .security-note {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #eee;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #666;
+    }
+    
+    .forgot-link {
+      display: block;
+      text-align: center;
+      margin-top: 1rem;
+      color: #c40000;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="brand-header">
+      <h1>MERCEDES & BMW</h1>
+      <p>PARTS ADMIN PORTAL</p>
+    </div>
+    
+    <div class="error-message" id="errorMessage">
+      Invalid username or password
+    </div>
+    
+    <form class="login-form" id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required 
+               placeholder="Enter admin username">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required 
+               placeholder="Enter password">
+      </div>
+      
+      <button type="submit" class="login-btn">Login to Dashboard</button>
+      
+      <a href="#" class="forgot-link" onclick="requestReset()">Forgot Password?</a>
+    </form>
+    
+    <div class="security-note">
+      <p>🔒 Restricted Access - Authorized Personnel Only</p>
+      <p>Logins are monitored and recorded</p>
+    </div>
+  </div>
+  
+  <script>
+    // Default admin credentials (in production, use proper authentication)
+    const ADMIN_CREDENTIALS = {
+      username: 'admin',
+      password: 'MercedesBMW2024!', // Change this in production
+      name: 'System Administrator',
+      role: 'superadmin'
+    };
+    
+    // Check if user is already logged in
+    if (localStorage.getItem('adminLoggedIn') === 'true') {
+      window.location.href = 'admin-dashboard.html';
+    }
+    
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      if (username === ADMIN_CREDENTIALS.username && 
+          password === ADMIN_CREDENTIALS.password) {
+        
+        // Create session
+        const session = {
+          username: username,
+          name: ADMIN_CREDENTIALS.name,
+          role: ADMIN_CREDENTIALS.role,
+          loginTime: new Date().toISOString(),
+          sessionId: 'admin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+        };
+        
+        localStorage.setItem('adminSession', JSON.stringify(session));
+        localStorage.setItem('adminLoggedIn', 'true');
+        
+        // Log login attempt
+        logAdminActivity('login', 'Admin logged in');
+        
+        // Redirect to dashboard
+        window.location.href = 'admin-dashboard.html';
+        
+      } else {
+        document.getElementById('errorMessage').style.display = 'block';
+        
+        // Log failed attempt
+        logAdminActivity('failed_login', `Failed login attempt: ${username}`);
+      }
+    });
+    
+    function requestReset() {
+      const username = prompt('Enter your admin username:');
+      if (username === ADMIN_CREDENTIALS.username) {
+        alert('Password reset instructions have been sent to the registered admin email.');
+        // In production, send email with reset link
+      } else {
+        alert('Username not found.');
+      }
+    }
+    
+    function logAdminActivity(action, details) {
+      const logs = JSON.parse(localStorage.getItem('adminLogs')) || [];
+      logs.push({
+        timestamp: new Date().toISOString(),
+        action: action,
+        details: details,
+        ip: '127.0.0.1' // In production, get real IP
+      });
+      
+      // Keep only last 1000 logs
+      if (logs.length > 1000) logs.shift();
+      
+      localStorage.setItem('adminLogs', JSON.stringify(logs));
+    }
+  </script>
+</body>
+</html>
