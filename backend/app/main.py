@@ -7,7 +7,7 @@ import os
 load_dotenv()
 
 # Import routers
-from app.routers import auth, products, orders ,customers, suppliers
+from app.routers import auth, products, orders ,customers, suppliers, settings
 
 app = FastAPI(
     title="German Garage API",
@@ -31,6 +31,7 @@ app.include_router(products.router)
 app.include_router(orders.router)
 app.include_router(customers.router)
 app.include_router(suppliers.router)
+app.include_router(settings.router)
 
 
 # ── Health Check ─────────────────────────────────────────────
