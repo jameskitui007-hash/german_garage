@@ -11,33 +11,32 @@ function getCustomersHTML() {
           <p>View customer information, order history, and communication</p>
         </div>
         <div class="header-actions">
-          <button class="btn-secondary" onclick="exportCustomersCSV()">
+          <button class="btn-secondary" onclick="window.open(API_BASE + '/api/customers/export/csv')">
             <i class="fas fa-download"></i> Export CSV
           </button>
         </div>
       </div>
-      
+
       <div class="filters-bar">
         <div class="search-box">
           <i class="fas fa-search"></i>
-          <input type="text" id="customersSearch" placeholder="Search customers..." 
+          <input type="text" id="customersSearch" placeholder="Search customers..."
                  onkeyup="searchCustomers()">
         </div>
         <div class="filter-controls">
           <select id="customerTypeFilter" onchange="filterCustomers()">
             <option value="">All Customers</option>
-            <option value="regular">Regular</option>
-            <option value="new">New</option>
             <option value="vip">VIP</option>
+            <option value="regular">Regular</option>
           </select>
         </div>
       </div>
-      
+
       <div class="admin-table-container">
         <table class="admin-table" id="customersTable">
           <thead>
             <tr>
-              <th>Customer ID</th>
+              <th>ID</th>
               <th>Name</th>
               <th>Phone</th>
               <th>Email</th>
@@ -48,94 +47,74 @@ function getCustomersHTML() {
             </tr>
           </thead>
           <tbody id="customersTableBody">
-            <!-- Customers will be loaded here -->
+            <tr><td colspan="8" style="text-align:center">
+              <i class="fas fa-spinner fa-spin"></i> Loading...
+            </td></tr>
           </tbody>
         </table>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-function loadCustomersTable() {
-  // Generate customers from orders if none exist
-  if (customers.length === 0) {
-    generateCustomersFromOrders();
-  }
-  
-  const tbody = document.getElementById('customersTableBody');
-  
-  tbody.innerHTML = customers.map(customer => `
-    <tr>
-      <td><code>${customer.id || 'CUST-' + customer.phone?.slice(-4)}</code></td>
-      <td>
-        <strong>${customer.name}</strong>
-        ${customer.isVIP ? '<span class="vip-badge">VIP</span>' : ''}
-      </td>
-      <td>${customer.phone || 'N/A'}</td>
-      <td>${customer.email || 'N/A'}</td>
-      <td>${customer.totalOrders || 0}</td>
-      <td>KES ${(customer.totalSpent || 0).toLocaleString()}</td>
-      <td>${customer.lastOrder ? formatDate(customer.lastOrder) : 'Never'}</td>
-      <td>
-        <div class="action-buttons">
-          <button class="btn-icon btn-view" onclick="viewCustomer('${customer.id}')">
-            <i class="fas fa-eye"></i>
-          </button>
-          <button class="btn-icon" onclick="messageCustomer('${customer.phone}')" 
-                  style="background: #25D366; color: white;">
-            <i class="fab fa-whatsapp"></i>
-          </button>
-          <button class="btn-icon" onclick="emailCustomer('${customer.email}')" 
-                  style="background: #ea4335; color: white;">
-            <i class="fas fa-envelope"></i>
-          </button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
+async function loadCustomersTable(params = "") {
+  try {
+    const res   = await api.getCustomers(params);
+    const tbody = document.getElementById("customersTableBody");
 
-function generateCustomersFromOrders() {
-  const customerMap = new Map();
-  
-  orders.forEach(order => {
-    if (order.customer?.phone) {
-      const phone = order.customer.phone;
-      if (!customerMap.has(phone)) {
-        customerMap.set(phone, {
-          id: 'cust_' + Date.now() + Math.random().toString(36).substr(2, 9),
-          name: order.customer.name || 'Guest',
-          phone: phone,
-          email: order.customer.email,
-          totalOrders: 0,
-          totalSpent: 0,
-          lastOrder: order.date,
-          orders: []
-        });
-      }
-      
-      const customer = customerMap.get(phone);
-      customer.totalOrders++;
-      customer.totalSpent += order.total || 0;
-      customer.lastOrder = order.date > customer.lastOrder ? order.date : customer.lastOrder;
-      customer.orders.push(order.number);
+    // API may return { customers: [...], total: N } or just an array
+    const customers = Array.isArray(res) ? res : (res.customers || []);
+
+    if (!customers.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">No customers found</td></tr>`;
+      return;
     }
-  });
-  
-  customers = Array.from(customerMap.values());
-  localStorage.setItem('customers', JSON.stringify(customers));
+
+    tbody.innerHTML = customers.map(c => `
+      <tr>
+        <td><code>${c.id}</code></td>
+        <td>
+          <strong>${c.name}</strong>
+          ${c.is_vip ? '<span class="vip-badge">VIP</span>' : ""}
+        </td>
+        <td>${c.phone || "N/A"}</td>
+        <td>${c.email || "N/A"}</td>
+        <td>${c.total_orders || 0}</td>
+        <td>KES ${(c.total_spent || 0).toLocaleString()}</td>
+        <td>${c.last_order ? formatDate(c.last_order) : "Never"}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn-icon" onclick="messageCustomer('${c.phone}')"
+                    style="background:#25D366;color:white;" title="WhatsApp">
+              <i class="fab fa-whatsapp"></i>
+            </button>
+            <button class="btn-icon" onclick="emailCustomer('${c.email}')"
+                    style="background:#ea4335;color:white;" title="Email">
+              <i class="fas fa-envelope"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`).join("");
+  } catch (err) {
+    showNotification("Failed to load customers", "error");
+  }
+}
+
+async function searchCustomers() {
+  const search = document.getElementById("customersSearch").value;
+  await loadCustomersTable(`?search=${encodeURIComponent(search)}`);
+}
+
+async function filterCustomers() {
+  const type = document.getElementById("customerTypeFilter").value;
+  await loadCustomersTable(type ? `?is_vip=${type === "vip"}` : "");
 }
 
 function messageCustomer(phone) {
-  if (phone) {
-    window.open(`https://wa.me/${phone.replace('+', '')}`, '_blank');
-  }
+  if (phone) window.open(`https://wa.me/${phone.replace("+", "")}`, "_blank");
 }
 
 function emailCustomer(email) {
-  if (email) {
-    window.open(`mailto:${email}`, '_blank');
-  }
+  if (email) window.open(`mailto:${email}`, "_blank");
 }
 
 // ===================================
@@ -151,162 +130,126 @@ function getReportsHTML() {
           <p>Analyze sales performance, inventory trends, and business metrics</p>
         </div>
         <div class="header-actions">
-          <button class="btn-primary" onclick="generateSalesReport()">
-            <i class="fas fa-file-pdf"></i> Generate PDF Report
-          </button>
-          <button class="btn-secondary" onclick="exportReportData()">
+          <button class="btn-secondary" id="exportReportBtn" onclick="exportReportCSV()">
             <i class="fas fa-download"></i> Export Data
           </button>
         </div>
       </div>
-      
+
       <div class="reports-filters">
-        <div class="filter-group">
-          <label>Report Type:</label>
-          <select id="reportType" onchange="updateReport()">
-            <option value="sales">Sales Report</option>
-            <option value="inventory">Inventory Report</option>
-            <option value="customer">Customer Report</option>
-            <option value="profit">Profitability Report</option>
-          </select>
-        </div>
-        
         <div class="filter-group">
           <label>Date Range:</label>
           <div class="date-range">
-            <input type="date" id="reportStartDate" onchange="updateReport()">
+            <input type="date" id="reportStartDate" onchange="loadReports()">
             <span>to</span>
-            <input type="date" id="reportEndDate" onchange="updateReport()">
+            <input type="date" id="reportEndDate" onchange="loadReports()">
           </div>
         </div>
-        
         <div class="filter-group">
           <label>Brand:</label>
-          <select id="reportBrand" onchange="updateReport()">
+          <select id="reportBrand" onchange="loadReports()">
             <option value="">All Brands</option>
             <option value="mercedes">Mercedes-Benz</option>
             <option value="bmw">BMW</option>
           </select>
         </div>
-        
-        <button class="btn-secondary" onclick="updateReport()">
-          <i class="fas fa-filter"></i> Apply Filters
-        </button>
       </div>
-      
+
       <div class="reports-dashboard">
         <div class="report-summary">
           <div class="summary-card">
             <h4><i class="fas fa-money-bill-wave"></i> Total Revenue</h4>
             <div class="summary-value" id="reportRevenue">KES 0</div>
-            <div class="summary-change" id="revenueChange">+0% from last period</div>
           </div>
-          
           <div class="summary-card">
             <h4><i class="fas fa-shopping-cart"></i> Total Orders</h4>
             <div class="summary-value" id="reportOrders">0</div>
-            <div class="summary-change" id="ordersChange">+0% from last period</div>
           </div>
-          
           <div class="summary-card">
             <h4><i class="fas fa-box"></i> Items Sold</h4>
             <div class="summary-value" id="reportItems">0</div>
-            <div class="summary-change" id="itemsChange">+0% from last period</div>
           </div>
-          
           <div class="summary-card">
-            <h4><i class="fas fa-chart-line"></i> Average Order Value</h4>
+            <h4><i class="fas fa-chart-line"></i> Avg Order Value</h4>
             <div class="summary-value" id="reportAOV">KES 0</div>
-            <div class="summary-change" id="aovChange">+0% from last period</div>
           </div>
         </div>
-        
-        <div class="report-charts">
-          <div class="chart-card">
-            <h4><i class="fas fa-chart-bar"></i> Sales by Brand</h4>
-            <canvas id="brandSalesChart" width="400" height="200"></canvas>
-          </div>
-          
-          <div class="chart-card">
-            <h4><i class="fas fa-chart-pie"></i> Sales by Category</h4>
-            <canvas id="categorySalesChart" width="400" height="200"></canvas>
-          </div>
-        </div>
-        
+
         <div class="report-table">
-          <h4><i class="fas fa-table"></i> Detailed Report</h4>
+          <h4><i class="fas fa-table"></i> Order Details</h4>
           <div class="admin-table-container">
-            <table class="admin-table" id="reportTable">
+            <table class="admin-table">
               <thead>
-                <tr id="reportTableHeader">
-                  <!-- Dynamic headers -->
-                </thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Customer</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                </tr>
               </thead>
               <tbody id="reportTableBody">
-                <!-- Dynamic data -->
+                <tr><td colspan="6" style="text-align:center">
+                  <i class="fas fa-spinner fa-spin"></i> Loading...
+                </td></tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-function updateReport() {
-  const reportType = document.getElementById('reportType').value;
-  const startDate = document.getElementById('reportStartDate').value;
-  const endDate = document.getElementById('reportEndDate').value;
-  const brand = document.getElementById('reportBrand').value;
-  
-  // Calculate report data based on filters
-  const reportData = calculateReportData(reportType, startDate, endDate, brand);
-  
-  // Update summary cards
-  document.getElementById('reportRevenue').textContent = `KES ${reportData.revenue.toLocaleString()}`;
-  document.getElementById('reportOrders').textContent = reportData.orders;
-  document.getElementById('reportItems').textContent = reportData.items;
-  document.getElementById('reportAOV').textContent = `KES ${reportData.averageOrderValue.toLocaleString()}`;
-  
-  // Update charts
-  updateReportCharts(reportData);
-  
-  // Update detailed table
-  updateReportTable(reportData);
+async function loadReports() {
+  const startDate = document.getElementById("reportStartDate")?.value || "";
+  const endDate   = document.getElementById("reportEndDate")?.value   || "";
+  const brand     = document.getElementById("reportBrand")?.value     || "";
+
+  let params = "?";
+  if (startDate) params += `start_date=${startDate}&`;
+  if (endDate)   params += `end_date=${endDate}&`;
+  if (brand)     params += `brand=${brand}&`;
+
+  try {
+    const data  = await api.getReport(params);
+    const tbody = document.getElementById("reportTableBody");
+
+    // Update summary cards
+    document.getElementById("reportRevenue").textContent = `KES ${(data.total_revenue || 0).toLocaleString()}`;
+    document.getElementById("reportOrders").textContent  = data.total_orders || 0;
+    document.getElementById("reportItems").textContent   = data.total_items  || 0;
+    document.getElementById("reportAOV").textContent     = `KES ${(data.average_order_value || 0).toLocaleString()}`;
+
+    // Populate table
+    const orders = data.orders || [];
+    tbody.innerHTML = orders.length === 0
+      ? `<tr><td colspan="6" style="text-align:center">No data for selected filters</td></tr>`
+      : orders.map(o => `
+          <tr>
+            <td><strong>${o.order_number}</strong></td>
+            <td>${o.customer_name || "Guest"}</td>
+            <td>${formatDate(o.date)}</td>
+            <td>${o.item_count || 0}</td>
+            <td>KES ${(o.total || 0).toLocaleString()}</td>
+            <td><span class="status-badge status-${o.status}">${o.status}</span></td>
+          </tr>`).join("");
+  } catch (err) {
+    showNotification("Failed to load report", "error");
+  }
 }
 
-function calculateReportData(type, startDate, endDate, brand) {
-  // Filter orders by date range
-  let filteredOrders = orders;
-  
-  if (startDate) {
-    filteredOrders = filteredOrders.filter(order => order.date >= startDate);
-  }
-  
-  if (endDate) {
-    filteredOrders = filteredOrders.filter(order => order.date <= endDate);
-  }
-  
-  // Filter by brand if specified
-  if (brand) {
-    // This would require tracking brand in orders, which we don't have in sample
-    // For now, return all
-  }
-  
-  // Calculate metrics
-  const revenue = filteredOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-  const ordersCount = filteredOrders.length;
-  const items = filteredOrders.reduce((sum, order) => 
-    sum + (order.items?.reduce((itemSum, item) => itemSum + (item.quantity || 1), 0) || 0), 0);
-  const averageOrderValue = ordersCount > 0 ? revenue / ordersCount : 0;
-  
-  return {
-    revenue,
-    orders: ordersCount,
-    items,
-    averageOrderValue,
-    filteredOrders
-  };
+function exportReportCSV() {
+  const startDate = document.getElementById("reportStartDate")?.value || "";
+  const endDate   = document.getElementById("reportEndDate")?.value   || "";
+  const brand     = document.getElementById("reportBrand")?.value     || "";
+
+  let url = `${API_BASE}/api/reports/export/csv?`;
+  if (startDate) url += `start_date=${startDate}&`;
+  if (endDate)   url += `end_date=${endDate}&`;
+  if (brand)     url += `brand=${brand}`;
+
+  window.open(url);
 }
 
 // ===================================
@@ -327,7 +270,7 @@ function getSuppliersHTML() {
           </button>
         </div>
       </div>
-      
+
       <div class="admin-table-container">
         <table class="admin-table" id="suppliersTable">
           <thead>
@@ -337,79 +280,235 @@ function getSuppliersHTML() {
               <th>Phone</th>
               <th>Email</th>
               <th>Products Supplied</th>
-              <th>Last Order</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="suppliersTableBody">
-            <!-- Suppliers will be loaded here -->
+            <tr><td colspan="7" style="text-align:center">
+              <i class="fas fa-spinner fa-spin"></i> Loading...
+            </td></tr>
           </tbody>
         </table>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-function loadSuppliersTable() {
-  // Sample suppliers if none exist
-  if (suppliers.length === 0) {
-    suppliers = [
-      {
-        id: 'supp_1',
-        name: 'Mercedes-Benz Kenya',
-        contact: 'John Mwangi',
-        phone: '+254712345671',
-        email: 'parts@mercedes.co.ke',
-        products: ['Oil Filters', 'Brake Pads', 'Air Filters'],
-        lastOrder: '2024-01-15',
-        status: 'active'
-      },
-      {
-        id: 'supp_2',
-        name: 'BMW East Africa',
-        contact: 'Sarah Kariuki',
-        phone: '+254712345672',
-        email: 'parts@bmw.co.ke',
-        products: ['Spark Plugs', 'Cabin Filters', 'Brake Discs'],
-        lastOrder: '2024-01-10',
-        status: 'active'
-      }
-    ];
-    localStorage.setItem('suppliers', JSON.stringify(suppliers));
+async function loadSuppliersTable() {
+  try {
+    const res       = await api.getSuppliers();
+    const suppliers = Array.isArray(res) ? res : (res.suppliers || []);
+    const tbody     = document.getElementById("suppliersTableBody");
+
+    if (!suppliers.length) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">No suppliers found</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = suppliers.map(s => `
+      <tr>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.contact || "N/A"}</td>
+        <td>${s.phone  || "N/A"}</td>
+        <td>${s.email  || "N/A"}</td>
+        <td>${s.products_supplied || "Various"}</td>
+        <td>
+          <span class="status-badge ${s.status === "active" ? "status-good" : "status-pending"}">
+            ${s.status}
+          </span>
+        </td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn-icon" onclick="callSupplier('${s.phone}')"
+                    style="background:#4caf50;color:white;" title="Call">
+              <i class="fas fa-phone"></i>
+            </button>
+            <button class="btn-icon" onclick="emailSupplier('${s.email}')"
+                    style="background:#ea4335;color:white;" title="Email">
+              <i class="fas fa-envelope"></i>
+            </button>
+            <button class="btn-icon btn-edit" onclick="editSupplier(${s.id})" title="Edit">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn-icon btn-delete" onclick="deleteSupplier(${s.id})" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`).join("");
+  } catch (err) {
+    showNotification("Failed to load suppliers", "error");
   }
-  
-  const tbody = document.getElementById('suppliersTableBody');
-  tbody.innerHTML = suppliers.map(supplier => `
-    <tr>
-      <td><strong>${supplier.name}</strong></td>
-      <td>${supplier.contact}</td>
-      <td>${supplier.phone}</td>
-      <td>${supplier.email}</td>
-      <td>${supplier.products?.join(', ') || 'Various'}</td>
-      <td>${formatDate(supplier.lastOrder)}</td>
-      <td>
-        <span class="status-badge ${supplier.status === 'active' ? 'status-good' : 'status-pending'}">
-          ${supplier.status}
-        </span>
-      </td>
-      <td>
-        <div class="action-buttons">
-          <button class="btn-icon" onclick="callSupplier('${supplier.phone}')" 
-                  style="background: #4caf50; color: white;">
-            <i class="fas fa-phone"></i>
-          </button>
-          <button class="btn-icon" onclick="emailSupplier('${supplier.email}')" 
-                  style="background: #ea4335; color: white;">
-            <i class="fas fa-envelope"></i>
-          </button>
-          <button class="btn-icon btn-edit" onclick="editSupplier('${supplier.id}')">
-            <i class="fas fa-edit"></i>
-          </button>
+}
+
+function showAddSupplierModal() {
+  document.getElementById("modal-container").innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-plus"></i> Add Supplier</h3>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
-      </td>
-    </tr>
-  `).join('');
+        <div class="modal-body">
+          <form id="addSupplierForm" onsubmit="saveNewSupplier(event)">
+            <div class="form-group">
+              <label>Supplier Name *</label>
+              <input type="text" class="form-control" name="name" required placeholder="Mercedes-Benz Kenya">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Contact Person</label>
+                <input type="text" class="form-control" name="contact" placeholder="John Mwangi">
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="tel" class="form-control" name="phone" placeholder="+254712345678">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" class="form-control" name="email" placeholder="parts@supplier.co.ke">
+            </div>
+            <div class="form-group">
+              <label>Products Supplied</label>
+              <input type="text" class="form-control" name="products_supplied"
+                     placeholder="Oil Filters, Brake Pads, Air Filters">
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select class="form-control" name="status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+              <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Supplier</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveNewSupplier(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+
+  const payload = {
+    name:              formData.get("name"),
+    contact:           formData.get("contact"),
+    phone:             formData.get("phone"),
+    email:             formData.get("email"),
+    products_supplied: formData.get("products_supplied"),
+    status:            formData.get("status"),
+  };
+
+  try {
+    await api.createSupplier(payload);
+    closeModal();
+    loadSuppliersTable();
+    showNotification("Supplier added successfully!", "success");
+  } catch (err) {
+    showNotification(err.message || "Failed to save supplier", "error");
+  }
+}
+
+async function editSupplier(supplierId) {
+  try {
+    const s = await api.getSupplier(supplierId);
+    document.getElementById("modal-container").innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Edit Supplier</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="editSupplierForm" onsubmit="updateSupplier(event, ${s.id})">
+              <div class="form-group">
+                <label>Supplier Name *</label>
+                <input type="text" class="form-control" name="name" required value="${s.name}">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Contact Person</label>
+                  <input type="text" class="form-control" name="contact" value="${s.contact || ""}">
+                </div>
+                <div class="form-group">
+                  <label>Phone</label>
+                  <input type="tel" class="form-control" name="phone" value="${s.phone || ""}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" class="form-control" name="email" value="${s.email || ""}">
+              </div>
+              <div class="form-group">
+                <label>Products Supplied</label>
+                <input type="text" class="form-control" name="products_supplied"
+                       value="${s.products_supplied || ""}">
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select class="form-control" name="status">
+                  <option value="active"   ${s.status === "active"   ? "selected" : ""}>Active</option>
+                  <option value="inactive" ${s.status === "inactive" ? "selected" : ""}>Inactive</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Supplier</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>`;
+  } catch (err) {
+    showNotification("Failed to load supplier", "error");
+  }
+}
+
+async function updateSupplier(event, supplierId) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+
+  const payload = {
+    name:              formData.get("name"),
+    contact:           formData.get("contact"),
+    phone:             formData.get("phone"),
+    email:             formData.get("email"),
+    products_supplied: formData.get("products_supplied"),
+    status:            formData.get("status"),
+  };
+
+  try {
+    await api.updateSupplier(supplierId, payload);
+    closeModal();
+    loadSuppliersTable();
+    showNotification("Supplier updated successfully!", "success");
+  } catch (err) {
+    showNotification(err.message || "Failed to update supplier", "error");
+  }
+}
+
+async function deleteSupplier(supplierId) {
+  if (!confirm("Delete this supplier? This cannot be undone.")) return;
+  try {
+    await api.deleteSupplier(supplierId);
+    loadSuppliersTable();
+    showNotification("Supplier deleted successfully!", "success");
+  } catch (err) {
+    showNotification(err.message || "Delete failed", "error");
+  }
+}
+
+function callSupplier(phone) {
+  if (phone) window.open(`tel:${phone}`);
+}
+
+function emailSupplier(email) {
+  if (email) window.open(`mailto:${email}`);
 }
 
 // ===================================
@@ -422,272 +521,253 @@ function getSettingsHTML() {
       <div class="content-header">
         <h2><i class="fas fa-cog"></i> System Settings</h2>
       </div>
-      
+
       <div class="settings-grid">
         <div class="settings-card">
           <h3><i class="fas fa-store"></i> Store Settings</h3>
-          <form id="storeSettingsForm" onsubmit="saveStoreSettings(event)">
+          <form id="storeSettingsForm" onsubmit="saveSettingsGroup(event, 'store')">
             <div class="form-group">
               <label>Store Name</label>
-              <input type="text" class="form-control" name="storeName" 
+              <input type="text" class="form-control" name="store_name"
                      value="Mercedes & BMW Parts Shop">
             </div>
-            
             <div class="form-group">
               <label>Contact Phone</label>
-              <input type="tel" class="form-control" name="contactPhone" 
-                     value="+254712345678">
+              <input type="tel" class="form-control" name="contact_phone" value="+254712345678">
             </div>
-            
             <div class="form-group">
               <label>Contact Email</label>
-              <input type="email" class="form-control" name="contactEmail" 
+              <input type="email" class="form-control" name="contact_email"
                      value="info@mercedesbmwspecialist.co.ke">
             </div>
-            
             <div class="form-group">
               <label>Business Address</label>
               <textarea class="form-control" name="address" rows="3">Nairobi, Kenya</textarea>
             </div>
-            
             <button type="submit" class="btn-primary">Save Store Settings</button>
           </form>
         </div>
-        
+
         <div class="settings-card">
           <h3><i class="fas fa-percentage"></i> Pricing Settings</h3>
-          <form id="pricingSettingsForm" onsubmit="savePricingSettings(event)">
+          <form id="pricingSettingsForm" onsubmit="saveSettingsGroup(event, 'pricing')">
             <div class="form-group">
               <label>Default Markup Percentage</label>
-              <input type="number" class="form-control" name="defaultMarkup" 
+              <input type="number" class="form-control" name="default_markup"
                      value="35" step="1" min="0" max="100">
-              <small>Percentage added to cost price</small>
             </div>
-            
             <div class="form-group">
               <label>Minimum Profit Margin (KES)</label>
-              <input type="number" class="form-control" name="minProfit" 
+              <input type="number" class="form-control" name="min_profit"
                      value="1000" step="100" min="0">
             </div>
-            
-            <div class="form-group">
-              <label>Round Prices to Nearest</label>
-              <select class="form-control" name="roundTo">
-                <option value="10">10</option>
-                <option value="50" selected>50</option>
-                <option value="100">100</option>
-                <option value="500">500</option>
-              </select>
-            </div>
-            
             <button type="submit" class="btn-primary">Save Pricing Settings</button>
           </form>
         </div>
-        
+
         <div class="settings-card">
           <h3><i class="fas fa-shipping-fast"></i> Delivery Settings</h3>
-          <form id="deliverySettingsForm">
+          <form id="deliverySettingsForm" onsubmit="saveSettingsGroup(event, 'delivery')">
             <div class="form-group">
               <label>Nairobi Delivery Fee (KES)</label>
-              <input type="number" class="form-control" name="nairobiFee" 
-                     value="500" step="100" min="0">
+              <input type="number" class="form-control" name="nairobi_fee" value="500" step="100" min="0">
             </div>
-            
             <div class="form-group">
-              <label>Outside Nairobi Delivery Fee (KES)</label>
-              <input type="number" class="form-control" name="outsideFee" 
-                     value="1500" step="100" min="0">
+              <label>Outside Nairobi Fee (KES)</label>
+              <input type="number" class="form-control" name="outside_fee" value="1500" step="100" min="0">
             </div>
-            
             <div class="form-group">
               <label>Free Shipping Threshold (KES)</label>
-              <input type="number" class="form-control" name="freeShipping" 
-                     value="15000" step="1000" min="0">
+              <input type="number" class="form-control" name="free_shipping" value="15000" step="1000" min="0">
             </div>
-            
             <button type="submit" class="btn-primary">Save Delivery Settings</button>
           </form>
         </div>
-        
+
         <div class="settings-card">
           <h3><i class="fas fa-money-check-alt"></i> Payment Settings</h3>
-          <form id="paymentSettingsForm">
+          <form id="paymentSettingsForm" onsubmit="saveSettingsGroup(event, 'payment')">
             <div class="form-group">
               <label>M-Pesa Paybill Number</label>
-              <input type="text" class="form-control" name="paybill" 
-                     value="123456">
+              <input type="text" class="form-control" name="paybill" value="123456">
             </div>
-            
             <div class="form-group">
               <label>M-Pesa Account Name</label>
-              <input type="text" class="form-control" name="accountName" 
-                     value="MERCEDES BMW PARTS">
+              <input type="text" class="form-control" name="account_name" value="MERCEDES BMW PARTS">
             </div>
-            
-            <div class="form-group">
-              <div class="form-check">
-                <input type="checkbox" class="form-check-input" name="enableMpesa" checked>
-                <label class="form-check-label">Enable M-Pesa Payments</label>
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <div class="form-check">
-                <input type="checkbox" class="form-check-input" name="enableCash" checked>
-                <label class="form-check-label">Enable Cash on Pickup</label>
-              </div>
-            </div>
-            
             <button type="submit" class="btn-primary">Save Payment Settings</button>
           </form>
         </div>
-        
+
         <div class="settings-card">
           <h3><i class="fas fa-user-shield"></i> Admin Settings</h3>
           <div class="admin-actions">
-            <button class="btn-secondary" onclick="changeAdminPassword()">
-              <i class="fas fa-key"></i> Change Password
-            </button>
             <button class="btn-secondary" onclick="viewAdminLogs()">
               <i class="fas fa-clipboard-list"></i> View Activity Logs
             </button>
             <button class="btn-secondary" onclick="backupDatabase()">
               <i class="fas fa-database"></i> Backup Database
             </button>
-            <button class="btn-danger" onclick="resetDatabase()">
-              <i class="fas fa-trash"></i> Reset Database
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
+}
+
+async function loadSettingsData() {
+  // Load settings from API and populate form fields
+  try {
+    const settings = await api.getSettings();
+    if (!settings || !Array.isArray(settings)) return;
+
+    settings.forEach(setting => {
+      // settings are stored as {key, value} pairs in the DB
+      const input = document.querySelector(`[name="${setting.key}"]`);
+      if (input) input.value = setting.value;
+    });
+  } catch (err) {
+    // Non-critical — forms have sensible defaults baked in
+    console.warn("Could not load settings from API:", err.message);
+  }
+}
+
+async function saveSettingsGroup(event, group) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const payload  = {};
+
+  // Convert FormData entries to key/value pairs, prefixed with group
+  for (const [key, value] of formData.entries()) {
+    payload[key] = value;
+  }
+
+  try {
+    await api.updateSettings({ group, settings: payload });
+    showNotification("Settings saved!", "success");
+  } catch (err) {
+    showNotification(err.message || "Failed to save settings", "error");
+  }
 }
 
 // ===================================
-// SYSTEM FUNCTIONS
+// ACTIVITY LOGS
 // ===================================
 
-function changeAdminPassword() {
-  const currentPassword = prompt('Enter current password:');
-  if (currentPassword !== 'MercedesBMW2024!') {
-    alert('Current password is incorrect');
-    return;
-  }
-  
-  const newPassword = prompt('Enter new password:');
-  const confirmPassword = prompt('Confirm new password:');
-  
-  if (newPassword !== confirmPassword) {
-    alert('Passwords do not match');
-    return;
-  }
-  
-  if (newPassword.length < 8) {
-    alert('Password must be at least 8 characters long');
-    return;
-  }
-  
-  // In production, this would be stored securely
-  alert('Password changed successfully!');
-  logAdminActivity('change_password', 'Admin changed password');
-}
+async function viewAdminLogs() {
+  try {
+    const res  = await api.getLogs();
+    const logs = Array.isArray(res) ? res : (res.logs || []);
 
-function backupDatabase() {
-  const backup = {
-    timestamp: new Date().toISOString(),
-    products: products,
-    orders: orders,
-    customers: customers,
-    suppliers: suppliers,
-    settings: localStorage.getItem('settings') || '{}'
-  };
-  
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
-  
-  showNotification('Database backup created successfully!', 'success');
-  logAdminActivity('backup', 'Database backup created');
-}
-
-function resetDatabase() {
-  if (confirm('WARNING: This will reset all data to factory settings. This action cannot be undone. Are you sure?')) {
-    if (prompt('Type "RESET" to confirm:') === 'RESET') {
-      localStorage.clear();
-      showNotification('Database reset. Redirecting to login...', 'warning');
-      logAdminActivity('reset', 'Database reset to factory settings');
-      setTimeout(() => {
-        window.location.href = 'admin-login.html';
-      }, 2000);
-    }
-  }
-}
-
-function viewAdminLogs() {
-  const logs = JSON.parse(localStorage.getItem('adminLogs')) || [];
-  
-  const modalHTML = `
-    <div class="modal-overlay">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3><i class="fas fa-clipboard-list"></i> Activity Logs</h3>
-          <button class="modal-close" onclick="closeModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="logs-container">
-            ${logs.reverse().map(log => `
-              <div class="log-entry">
-                <div class="log-time">${new Date(log.timestamp).toLocaleString()}</div>
-                <div class="log-action">${log.action}</div>
-                <div class="log-details">${log.details}</div>
-                <div class="log-user">${log.user || 'system'}</div>
-              </div>
-            `).join('')}
-            
-            ${logs.length === 0 ? '<p class="empty-state">No activity logs found</p>' : ''}
+    document.getElementById("modal-container").innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-content" style="max-width:700px">
+          <div class="modal-header">
+            <h3><i class="fas fa-clipboard-list"></i> Activity Logs</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
           </div>
-          
-          <div class="modal-actions">
-            <button class="btn-secondary" onclick="exportLogs()">
-              <i class="fas fa-download"></i> Export Logs
-            </button>
-            <button class="btn-danger" onclick="clearLogs()">
-              <i class="fas fa-trash"></i> Clear Logs
-            </button>
+          <div class="modal-body">
+            <div class="logs-container" style="max-height:400px;overflow-y:auto;">
+              ${logs.length === 0
+                ? "<p class='empty-state'>No activity logs found</p>"
+                : logs.map(log => `
+                    <div class="log-entry" style="padding:0.75rem 0;border-bottom:1px solid #f0f0f0;">
+                      <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">
+                        <strong>${log.action}</strong>
+                        <small style="color:#999;">${new Date(log.timestamp).toLocaleString()}</small>
+                      </div>
+                      <div style="color:#555;">${log.details || ""}</div>
+                      <small style="color:#aaa;">by ${log.user || "system"}</small>
+                    </div>`).join("")}
+            </div>
+            <div class="modal-actions" style="margin-top:1rem;display:flex;gap:0.5rem;">
+              <button class="btn-secondary" onclick="clearAdminLogs()">
+                <i class="fas fa-trash"></i> Clear Logs
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  `;
-  
-  document.getElementById('modal-container').innerHTML = modalHTML;
+      </div>`;
+  } catch (err) {
+    showNotification("Failed to load logs", "error");
+  }
+}
+
+async function clearAdminLogs() {
+  if (!confirm("Clear all activity logs? This cannot be undone.")) return;
+  try {
+    await api.clearLogs();
+    closeModal();
+    showNotification("Logs cleared successfully!", "success");
+  } catch (err) {
+    showNotification(err.message || "Failed to clear logs", "error");
+  }
+}
+
+// ===================================
+// DATABASE BACKUP
+// ===================================
+
+async function backupDatabase() {
+  try {
+    showNotification("Generating backup...", "info");
+    // Fetch all data in parallel
+    const [productsRes, ordersRes, customersRes, suppliersRes] = await Promise.all([
+      api.getProducts("?per_page=9999"),
+      api.getOrders("?per_page=9999"),
+      api.getCustomers("?per_page=9999"),
+      api.getSuppliers(),
+    ]);
+
+    const backup = {
+      timestamp: new Date().toISOString(),
+      products:  productsRes.products  || productsRes,
+      orders:    ordersRes.orders      || ordersRes,
+      customers: customersRes.customers || customersRes,
+      suppliers: Array.isArray(suppliersRes) ? suppliersRes : (suppliersRes.suppliers || []),
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url  = window.URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `backup-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    showNotification("Backup downloaded successfully!", "success");
+  } catch (err) {
+    showNotification("Backup failed: " + err.message, "error");
+  }
 }
 
 // ===================================
 // INITIALIZATION
 // ===================================
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-  initAdminPanel();
-  
-  // Check session expiry (8 hours)
-  const session = JSON.parse(localStorage.getItem('adminSession'));
-  if (session) {
-    const loginTime = new Date(session.loginTime);
-    const now = new Date();
-    const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
-    
-    if (hoursDiff > 8) {
-      alert('Session expired. Please login again.');
-      logoutAdmin();
+document.addEventListener("DOMContentLoaded", function () {
+  // Verify JWT session is still valid before rendering
+  const token = localStorage.getItem("adminToken");
+  if (!token) {
+    window.location.href = "admin-login.html";
+    return;
+  }
+
+  // Check session age (8 hours)
+  const session = JSON.parse(localStorage.getItem("adminSession") || "{}");
+  if (session.loginTime) {
+    const hoursElapsed = (Date.now() - new Date(session.loginTime)) / (1000 * 60 * 60);
+    if (hoursElapsed > 8) {
+      alert("Session expired. Please login again.");
+      api.logout();
+      return;
     }
   }
+
+  // Boot the panel
+  loadSection("dashboard");
+
+  // Auto-refresh nav stats every 5 minutes
+  setInterval(updateQuickStats, 300_000);
 });

@@ -121,49 +121,32 @@
   <div id="modal-container"></div>
 
   <!-- Scripts -->
-  <script src="admin.js"></script>
-  <script>
-    // Check authentication
-    const session = JSON.parse(localStorage.getItem('adminSession'));
-    if (!session || localStorage.getItem('adminLoggedIn') !== 'true') {
-      window.location.href = 'admin-login.html';
-    } else {
-      document.getElementById('adminName').textContent = session.name;
-      document.getElementById('adminRole').textContent = session.role;
-      document.getElementById('lastLoginTime').textContent = 
-        new Date(session.loginTime).toLocaleTimeString();
-    }
-    
-    // Load dashboard on startup
-    document.addEventListener('DOMContentLoaded', function() {
-      loadSection('dashboard');
-      updateQuickStats();
-    });
-    
-    function logoutAdmin() {
-      // Log logout activity
-      logAdminActivity('logout', 'Admin logged out');
-      
-      // Clear session
-      localStorage.removeItem('adminSession');
-      localStorage.removeItem('adminLoggedIn');
-      
-      // Redirect to login
-      window.location.href = 'admin-login.html';
-    }
-    
-    function logAdminActivity(action, details) {
-      const logs = JSON.parse(localStorage.getItem('adminLogs')) || [];
-      logs.push({
-        timestamp: new Date().toISOString(),
-        action: action,
-        details: details,
-        user: session ? session.username : 'unknown'
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="api.js"></script>
+    <script src="admin.js"></script>
+    <script src="admin-sections.js"></script>
+    <script>
+      // Check authentication
+      const session = JSON.parse(localStorage.getItem("adminSession"));
+      if (!session || localStorage.getItem("adminLoggedIn") !== "true") {
+        window.location.href = "admin-login.html";
+      } else {
+        document.getElementById("adminName").textContent = session.name;
+        document.getElementById("adminRole").textContent = session.role;
+        document.getElementById("lastLoginTime").textContent =
+          new Date(session.loginTime).toLocaleTimeString();
+      }
+
+      // Logout
+      function logoutAdmin() {
+        api.logout();
+      }
+
+      // Load dashboard on startup
+      document.addEventListener("DOMContentLoaded", function () {
+        loadSection("dashboard");
+        updateQuickStats();
       });
-      
-      if (logs.length > 1000) logs.shift();
-      localStorage.setItem('adminLogs', JSON.stringify(logs));
-    }
-  </script>
+    </script>
 </body>
 </html>
