@@ -2,19 +2,30 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.admin import Admin
+from app.models.token_blocklist import TokenBlocklist
 from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, AccessTokenResponse
-from app.utils.security import verify_password, create_access_token, create_refresh_token, decode_refresh_token
+from app.utils.security import (
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
+    decode_access_token,
+)
 from app.utils.logger import log_activity
+from app.dependencies import get_current_admin, oauth2_scheme
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    """Authenticate admin and return a short-lived access token + long-lived refresh token."""
+
     # Look up admin by username
     admin = db.query(Admin).filter(Admin.username == payload.username).first()
 
-    # Validate credentials
+    # Validate credentials — same error for both wrong user and wrong password
+    # (avoids username enumeration)
     if not admin or not verify_password(payload.password, admin.hashed_password):
         log_activity(db, "failed_login", f"Failed login attempt: {payload.username}")
         raise HTTPException(
@@ -40,6 +51,29 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         admin_name=admin.name,
         admin_role=admin.role
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    token: str = Depends(oauth2_scheme),
+    current_admin: Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Invalidate the current access token by adding its jti to the blocklist.
+    Even if someone has a copy of the token, it will be rejected from this point on.
+    """
+    payload = decode_access_token(token)
+    if payload and payload.get("jti"):
+        revoked = TokenBlocklist(
+            jti=payload["jti"],
+            username=current_admin.username
+        )
+        db.add(revoked)
+        db.commit()
+
+    log_activity(db, "logout", f"Admin logged out: {current_admin.username}", user=current_admin.username)
+    # 204 — no body returned
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)

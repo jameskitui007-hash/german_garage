@@ -18,8 +18,6 @@ function clearToken() {
 }
 
 // ── Silent token refresh ──────────────────────────────────────
-// Called automatically when a 401 is received.
-// Sends the refresh token to get a new access token without re-login.
 async function tryRefreshToken() {
   const refresh = getRefreshToken();
   if (!refresh) return false;
@@ -62,21 +60,15 @@ async function apiFetch(endpoint, options = {}) {
       if (retry.status === 204) return null;
       if (retry.ok) return retry.json();
     }
-    // Refresh also failed — force logout
     clearToken();
     window.location.href = "admin-login.html";
     return;
   }
 
-  // No content response (DELETE)
   if (response.status === 204) return null;
 
   const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.detail || "Something went wrong");
-  }
-
+  if (!response.ok) throw new Error(data.detail || "Something went wrong");
   return data;
 }
 
@@ -95,7 +87,7 @@ const api = {
     });
     if (data?.access_token) {
       setToken(data.access_token);
-      setRefreshToken(data.refresh_token);      // store refresh token
+      setRefreshToken(data.refresh_token);
       localStorage.setItem("adminSession", JSON.stringify({
         name:      data.admin_name,
         role:      data.admin_role,
@@ -106,9 +98,16 @@ const api = {
     return data;
   },
 
-  logout() {
-    clearToken();
-    window.location.href = "admin-login.html";
+  async logout() {
+    try {
+      // Revoke the token server-side before clearing locally
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Always clear client-side even if server call fails
+    } finally {
+      clearToken();
+      window.location.href = "admin-login.html";
+    }
   },
 
   // ── Products ────────────────────────────────────────────────
