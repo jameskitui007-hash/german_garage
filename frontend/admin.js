@@ -144,6 +144,9 @@ async function updateQuickStats() {
   }
 }
 
+// Track chart instances so we can destroy before re-creating
+const chartInstances = {};
+
 async function loadDashboardCharts() {
   try {
     const [salesData, inventoryData] = await Promise.all([
@@ -151,10 +154,11 @@ async function loadDashboardCharts() {
       api.getInventoryChart()
     ]);
 
-    // Sales Chart
-    const salesCtx = document.getElementById("salesChart")?.getContext("2d");
-    if (salesCtx) {
-      new Chart(salesCtx, {
+    // Sales Chart — destroy existing instance first
+    const salesCanvas = document.getElementById("salesChart");
+    if (salesCanvas) {
+      if (chartInstances.sales) chartInstances.sales.destroy();
+      chartInstances.sales = new Chart(salesCanvas.getContext("2d"), {
         type: "line",
         data: {
           labels: salesData.labels,
@@ -171,10 +175,11 @@ async function loadDashboardCharts() {
       });
     }
 
-    // Inventory Chart
-    const invCtx = document.getElementById("inventoryChart")?.getContext("2d");
-    if (invCtx) {
-      new Chart(invCtx, {
+    // Inventory Chart — destroy existing instance first
+    const invCanvas = document.getElementById("inventoryChart");
+    if (invCanvas) {
+      if (chartInstances.inventory) chartInstances.inventory.destroy();
+      chartInstances.inventory = new Chart(invCanvas.getContext("2d"), {
         type: "doughnut",
         data: {
           labels: inventoryData.labels,
@@ -256,7 +261,7 @@ function getInventoryHTML() {
           <button class="btn-primary" onclick="showAddProductModal()">
             <i class="fas fa-plus"></i> Add New Product
           </button>
-          <button class="btn-secondary" onclick="window.open('${API_BASE}/api/products/export/csv')">
+          <button class="btn-secondary" onclick="window.open(API_BASE + '/api/products/export/csv')">
             <i class="fas fa-download"></i> Export CSV
           </button>
         </div>
@@ -369,11 +374,9 @@ function renderInventoryTable(res) {
       <td>${getStockStatusBadge(p.stock, p.min_stock)}</td>
       <td>
         <div class="action-buttons">
-          <button class="btn-icon btn-edit" onclick="editProduct('${p.id}')" title="Edit">
-            <i class="fas fa-edit"></i>
+          <button class="btn-icon btn-edit" onclick="editProduct('${p.id}')" title="Edit">        <i class="fas fa-edit"></i>
           </button>
-          <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Delete">
-            <i class="fas fa-trash"></i>
+          <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Delete">            <i class="fas fa-trash"></i>
           </button>
         </div>
       </td>
@@ -385,8 +388,8 @@ function renderInventoryTable(res) {
 }
 
 function getStockStatusBadge(stock, minStock) {
-  if (stock === 0)          return '<span class="status-badge status-cancelled">Out of Stock</span>';
-  if (stock <= minStock)    return '<span class="status-badge status-low">Low Stock</span>';
+  if (stock === 0)           return '<span class="status-badge status-cancelled">Out of Stock</span>';
+  if (stock <= minStock)     return '<span class="status-badge status-low">Low Stock</span>';
   if (stock <= minStock * 2) return '<span class="status-badge status-medium">Medium</span>';
   return '<span class="status-badge status-good">In Stock</span>';
 }
@@ -703,7 +706,7 @@ function getOrdersHTML() {
           <p>View and manage customer orders, update status, and process shipments</p>
         </div>
         <div class="header-actions">
-          <button class="btn-secondary" onclick="window.open('${API_BASE}/api/orders/export/csv')">
+          <button class="btn-secondary" onclick="window.open(API_BASE + '/api/orders/export/csv')">
             <i class="fas fa-download"></i> Export Orders
           </button>
         </div>
@@ -862,7 +865,7 @@ async function viewOrderDetails(orderNumber) {
               </tbody>
             </table>
             <p style="text-align:right; margin-top:1rem;">
-              <strong>Shipping: KES ${o.shipping_fee.toLocaleString()}</strong><br>
+              <strong>Shipping: KES ${o.shipping_fee?.toLocaleString() || "0"}</strong><br>
               <strong>Total: KES ${o.total.toLocaleString()}</strong>
             </p>
           </div>
@@ -913,7 +916,7 @@ function showNotification(message, type = "info") {
   setTimeout(() => { if (n.parentElement) n.remove(); }, 5000);
 }
 
-// Inject animations
+// Inject shared styles
 const style = document.createElement("style");
 style.textContent = `
   @keyframes slideInRight { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
