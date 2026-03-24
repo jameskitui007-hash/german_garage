@@ -1,11 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # ── Config — validated on import, app refuses to start if SECRET_KEY is weak ──
 from app.config import get_settings
 settings = get_settings()
+
+# ── Rate limiter — keyed by client IP address ─────────────────────────────────
+# Import this instance in any router that needs rate limiting:
+#   from app.main import limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 from app.routers import (
@@ -28,6 +38,7 @@ async def lifespan(app: FastAPI):
     print(f"  Environment : {env_label}")
     print(f"  Docs enabled: {settings.docs_enabled}")
     print(f"  CORS origin : {settings.FRONTEND_URL}")
+    print(f"  Rate limiting: ENABLED")
     print(f"  Token expiry: {settings.ACCESS_TOKEN_EXPIRE_MINUTES} min (access) / "
           f"{settings.REFRESH_TOKEN_EXPIRE_DAYS} days (refresh)")
     print(f"{'='*55}\n")
@@ -45,6 +56,21 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.docs_enabled else None,
     lifespan=lifespan,
 )
+
+# ── Rate limiting middleware ───────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+ 
+# ── Custom 429 handler — clean JSON instead of slowapi's default plain text ───
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Too many requests. Please slow down and try again shortly.",
+            "retry_after": str(exc.retry_after) if hasattr(exc, "retry_after") else "60",
+        },
+    )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # Explicit methods and headers — wildcard removed for security

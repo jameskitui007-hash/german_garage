@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.database import get_db
 from app.models.admin import Admin
 from app.models.token_blocklist import TokenBlocklist
@@ -17,23 +19,28 @@ from app.dependencies import get_current_admin, oauth2_scheme
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+# Each router owns its limiter instance — keyed by client IP
+limiter = Limiter(key_func=get_remote_address)
+
 # Lock account for 15 minutes after this many consecutive failures
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION    = timedelta(minutes=15)
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")   # max 10 login attempts per IP per minute
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """
     Authenticate admin and return access + refresh tokens.
-    Locks the account for 15 minutes after 5 consecutive failed attempts.
+    - Rate limited to 10 attempts/min per IP
+    - Locks the account for 15 min after 5 consecutive wrong passwords
     """
 
     # ── Step 1: Look up admin ─────────────────────────────────
     admin = db.query(Admin).filter(Admin.username == payload.username).first()
 
-    # Use a generic error for both "user not found" and "wrong password"
-    # to prevent username enumeration attacks
+    # Generic error for both "user not found" and "wrong password"
+    # prevents username enumeration attacks
     generic_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid username or password"
@@ -53,7 +60,8 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Account locked due to too many failed attempts. Try again in {remaining} seconds."
+            detail=f"Account locked due to too many failed attempts. "
+                   f"Try again in {remaining} seconds."
         )
 
     # ── Step 3: Validate password ─────────────────────────────
@@ -61,7 +69,6 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         admin.failed_login_count += 1
 
         if admin.failed_login_count >= MAX_FAILED_ATTEMPTS:
-            # Lock the account
             admin.locked_until = now + LOCKOUT_DURATION
             db.commit()
             log_activity(
@@ -70,16 +77,20 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
             )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Account locked for {int(LOCKOUT_DURATION.total_seconds() // 60)} minutes due to too many failed attempts."
+                detail=f"Account locked for {int(LOCKOUT_DURATION.total_seconds() // 60)} minutes "
+                       f"due to too many failed attempts."
             )
 
-        # Not locked yet — tell the user how many attempts remain
         attempts_left = MAX_FAILED_ATTEMPTS - admin.failed_login_count
         db.commit()
-        log_activity(db, "failed_login", f"Failed login attempt: {admin.username} ({attempts_left} attempts left)")
+        log_activity(
+            db, "failed_login",
+            f"Failed login attempt: {admin.username} ({attempts_left} attempts left)"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid username or password. {attempts_left} attempt(s) remaining before lockout."
+            detail=f"Invalid username or password. "
+                   f"{attempts_left} attempt(s) remaining before lockout."
         )
 
     # ── Step 4: Check account is active ──────────────────────
@@ -109,7 +120,9 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 def logout(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     current_admin: Admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -127,12 +140,20 @@ def logout(
         db.add(revoked)
         db.commit()
 
-    log_activity(db, "logout", f"Admin logged out: {current_admin.username}", user=current_admin.username)
+    log_activity(
+        db, "logout",
+        f"Admin logged out: {current_admin.username}",
+        user=current_admin.username
+    )
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
-def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
-    """Exchange a valid refresh token for a new short-lived access token."""
+@limiter.limit("30/minute")
+def refresh(payload: RefreshRequest, request: Request, db: Session = Depends(get_db)):
+    """
+    Exchange a valid refresh token for a new short-lived access token.
+    Rate limited to prevent refresh token brute-forcing.
+    """
     data = decode_refresh_token(payload.refresh_token)
     if not data:
         raise HTTPException(
