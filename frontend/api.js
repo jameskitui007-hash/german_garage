@@ -3,6 +3,34 @@
 // ===================================
 const API_BASE = "http://127.0.0.1:8000";
 
+// ===================================
+// XSS SANITIZATION UTILITY
+// ===================================
+/**
+ * sanitizeHTML(str)
+ * -----------------
+ * Escapes HTML special characters before injecting any
+ * user-supplied or API-returned string into the DOM via innerHTML.
+ *
+ * Use this on every value that comes from the API or user input
+ * before placing it inside a template literal that goes into innerHTML.
+ *
+ * Example:
+ *   element.innerHTML = `<td>${sanitizeHTML(product.name)}</td>`;
+ *
+ * DO NOT use on values going into textContent — that is already safe.
+ */
+function sanitizeHTML(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g,  "&amp;")
+    .replace(/</g,  "&lt;")
+    .replace(/>/g,  "&gt;")
+    .replace(/"/g,  "&quot;")
+    .replace(/'/g,  "&#x27;")
+    .replace(/\//g, "&#x2F;");
+}
+
 // ── Token helpers ─────────────────────────────────────────────
 function getToken()  { return localStorage.getItem("adminToken"); }
 function setToken(t) { localStorage.setItem("adminToken", t); }
@@ -60,11 +88,13 @@ async function apiFetch(endpoint, options = {}) {
       if (retry.status === 204) return null;
       if (retry.ok) return retry.json();
     }
+    // Refresh also failed — force logout
     clearToken();
     window.location.href = "admin-login.html";
     return;
   }
 
+  // No content response (DELETE / logout)
   if (response.status === 204) return null;
 
   const data = await response.json();
