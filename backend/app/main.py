@@ -11,10 +11,10 @@ from slowapi.middleware import SlowAPIMiddleware
 
 # ── Config — validated on import, app refuses to start if SECRET_KEY is weak ──
 from app.config import get_settings
+from app.middleware.security_headers import SecurityHeadersMiddleware
 settings = get_settings()
 
 # ── Rate limiter — keyed by client IP address ─────────────────────────────────
-# Import this instance in any router that needs @limiter.limit()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 # ── Routers ───────────────────────────────────────────────────────────────────
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     print(f"  Docs enabled: {settings.docs_enabled}")
     print(f"  CORS origin : {settings.FRONTEND_URL}")
     print(f"  Rate limiting: ENABLED")
+    print(f"  Security headers: ENABLED")
     print(f"  Token expiry: {settings.ACCESS_TOKEN_EXPIRE_MINUTES} min (access) / "
           f"{settings.REFRESH_TOKEN_EXPIRE_DAYS} days (refresh)")
     print(f"{'='*55}\n")
@@ -49,6 +50,12 @@ app = FastAPI(
     redoc_url="/redoc"          if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
     lifespan=lifespan,
+)
+
+# ── Security headers — applied to every response ──────────────────────────────
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    is_production=settings.is_production
 )
 
 # ── Rate limiting middleware ───────────────────────────────────────────────────
@@ -69,13 +76,8 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # ── Global 422 handler — hide internal field names from error responses ───────
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
-    """
-    Pydantic's default 422 response exposes full internal field paths and types.
-    This handler returns a cleaner, safer message instead.
-    """
     errors = []
     for error in exc.errors():
-        # 'loc' is a tuple like ('body', 'customer_email') — take the last element
         field = error["loc"][-1] if error["loc"] else "unknown"
         errors.append({
             "field":   str(field),
