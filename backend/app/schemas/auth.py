@@ -57,6 +57,10 @@ class AccessTokenResponse(BaseModel):
     access_token: str
     token_type:   str = "bearer"
 
+# What we return from the /refresh endpoint
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 # Data encoded inside the JWT token
 class TokenData(BaseModel):

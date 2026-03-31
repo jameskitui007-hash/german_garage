@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from functools import lru_cache
+from typing import List
 
 
 class Settings(BaseSettings):
@@ -21,35 +22,47 @@ class Settings(BaseSettings):
 
     # ── App ───────────────────────────────────────────────────
     FRONTEND_URL: str                   = "http://127.0.0.1:5500"
-    ENV: str                            = "development"
+    ENV: str                            = "development"   # "development" | "production"
 
     # ── Brute-force ───────────────────────────────────────────
     MAX_FAILED_LOGIN_ATTEMPTS: int      = 5
     LOCKOUT_DURATION_MINUTES: int       = 15
 
+    # ── Validators ────────────────────────────────────────────
+
     @field_validator("SECRET_KEY")
     @classmethod
     def secret_key_must_be_strong(cls, v: str) -> str:
+        """
+        Reject startup if SECRET_KEY is:
+          - Not set at all
+          - A known weak/default placeholder value
+          - Shorter than 32 characters (256 bits minimum)
+        """
         weak_defaults = {
             "secret", "changeme", "your-secret-key",
             "supersecret", "development", "test", "password",
         }
+
         if not v or v.strip() == "":
             raise ValueError(
                 "SECRET_KEY is not set. "
                 "Run: python generate_secret.py and add the output to your .env"
             )
+
         if v.lower() in weak_defaults:
             raise ValueError(
                 f"SECRET_KEY '{v}' is a known weak default. "
                 "Run: python generate_secret.py to generate a strong key."
             )
+
         if len(v) < 32:
             raise ValueError(
                 f"SECRET_KEY is too short ({len(v)} chars). "
                 "Minimum length is 32 characters. "
                 "Run: python generate_secret.py to generate a strong key."
             )
+
         return v
 
     @field_validator("ENV")
@@ -73,8 +86,6 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
-        extra = "ignore"  # ← ADD THIS LINE
-
 
 
 @lru_cache()
@@ -82,5 +93,12 @@ def get_settings() -> Settings:
     """
     Returns a cached singleton of the Settings instance.
     Use this everywhere instead of os.getenv() directly.
+
+    Usage:
+        from app.config import get_settings
+        settings = get_settings()
+        print(settings.SECRET_KEY)
     """
     return Settings()
+    # return Settings(_env_file=".env", _env_file_encoding="utf-8")
+    
