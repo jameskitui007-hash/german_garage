@@ -147,6 +147,61 @@ const api = {
   updateProduct: (id, body)    => api.put(`/api/products/${id}`, body),
   deleteProduct: (id)          => api.delete(`/api/products/${id}`),
 
+
+// ── Uploads ─────────────────────────────────────────────────
+  
+  /**
+   * Upload a single image for a product.
+   * Uses FormData (multipart) — NOT JSON.
+   * @param {string} productId - the product's id
+   * @param {File} file - the image File object from an <input type="file">
+   * @returns {Promise} - { filename, url, images, message }
+   */
+  async uploadProductImage(productId, file) {
+    const token = getToken();
+
+    // Build multipart form data — browser sets Content-Type automatically
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${API_BASE}/api/uploads/product/${productId}`, {
+      method: "POST",
+      headers: {
+        // Do NOT set Content-Type here — browser adds it with boundary automatically
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    // Session expired
+    if (response.status === 401) {
+      clearToken();
+      window.location.href = "admin-login.html";
+      return;
+    }
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Upload failed");
+    return data;
+  },
+
+  /**
+   * Delete a single image from a product.
+   * @param {string} productId - the product's id
+   * @param {string} filename - the filename to delete e.g. "abc123.jpg"
+   */
+  deleteProductImage: (productId, filename) =>
+    api.delete(`/api/uploads/product/${productId}/${filename}`),
+
+  /**
+   * Build the full URL for a product image filename.
+   * @param {string} filename
+   * @returns {string} full URL
+   */
+  getImageUrl: (filename) => `${API_BASE}/uploads/products/${filename}`,
+
+
+
   // ── Orders ──────────────────────────────────────────────────
   getOrders:     (params = "") => api.get(`/api/orders${params}`),
   getOrder:      (num)         => api.get(`/api/orders/${num}`),

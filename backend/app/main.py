@@ -8,6 +8,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from fastapi.staticfiles import StaticFiles
+
 
 # ── Config — validated on import, app refuses to start if SECRET_KEY is weak ──
 from app.config import get_settings
@@ -21,7 +23,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 from app.routers import (
     auth, products, orders, customers,
     suppliers, settings as settings_router,
-    dashboard, reports, logs
+    dashboard, reports, logs ,uploads , products
 )
 
 
@@ -39,6 +41,7 @@ async def lifespan(app: FastAPI):
           f"{settings.REFRESH_TOKEN_EXPIRE_DAYS} days (refresh)")
     print(f"{'='*55}\n")
     yield
+
 
 
 # ── App ────────────────────────────────────────────────────────────────────────
@@ -97,8 +100,20 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+# ── Static Files — serve uploaded product images ──────────────────────────────
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent.parent  # resolves to backend/
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(BASE_DIR / "uploads")),
+    name="uploads"
+)
+
+
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router)
+app.include_router(uploads.router)
 app.include_router(products.router)
 app.include_router(orders.router)
 app.include_router(customers.router)

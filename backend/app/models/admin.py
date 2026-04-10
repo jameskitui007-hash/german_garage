@@ -13,5 +13,12 @@ class Admin(Base):
     role            = Column(String(50), default="admin")   # admin | superadmin
     is_active       = Column(Boolean, default=True)
 
+    # ── Brute-force protection ────────────────────────────────
+    # Incremented on every failed login attempt; reset to 0 on success
+    failed_login_count = Column(Integer, default=0, nullable=False)
+
+    # Set to UTC now + 15 min after 5 consecutive failures; NULL means not locked
+    locked_until       = Column(DateTime(timezone=True), nullable=True)
+
     created_at      = Column(DateTime(timezone=True), server_default=func.now())
     updated_at      = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

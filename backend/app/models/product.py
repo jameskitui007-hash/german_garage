@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, Text, DateTime
+from sqlalchemy import Column, String, Integer, Float, Text, DateTime, JSON
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -20,6 +20,7 @@ class Product(Base):
     description = Column(Text, nullable=True)
     supplier    = Column(String(200), nullable=True)
     location    = Column(String(100), nullable=True)        # shelf location e.g. Shelf A-12
+    images = Column(JSON, nullable=True, default=list)
 
     created_at  = Column(DateTime(timezone=True), server_default=func.now())
     updated_at  = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

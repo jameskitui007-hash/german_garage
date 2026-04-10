@@ -3,6 +3,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
+from pathlib import Path
+
+UPLOAD_DIR = Path("uploads/products")
+
+
 import uuid, csv, io
 
 from app.database import get_db
@@ -120,6 +125,18 @@ def delete_product(
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    
+# ── Clean up images from disk before deleting the record ──
+    if product.images:
+        for filename in product.images:
+            file_path = Path("uploads/products") / filename
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as e:
+                    # Log but don't block the delete if file removal fails
+                    print(f"Warning: could not delete image {filename}: {e}")
+
 
     name = product.name
     db.delete(product)

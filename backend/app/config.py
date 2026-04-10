@@ -86,6 +86,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "ignore"  # Forbid any extra fields in .env to catch typos
 
 
 @lru_cache()

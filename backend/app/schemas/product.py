@@ -1,6 +1,6 @@
 import re
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import Optional , List
 from datetime import datetime
 from app.utils.sanitize import strip_html
 
@@ -25,6 +25,7 @@ class ProductCreate(BaseModel):
     description: Optional[str]  = None
     supplier:    Optional[str]  = None
     location:    Optional[str]  = None
+    images:      Optional[List[str]] = None  # ← ADD THIS LINE
 
     @field_validator("sku")
     @classmethod
@@ -143,6 +144,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str]   = None
     supplier:    Optional[str]   = None
     location:    Optional[str]   = None
+    images: Optional[List[str]] = None
 
     @field_validator("name")
     @classmethod
@@ -221,6 +223,6 @@ class ProductResponse(BaseModel):
     location:    Optional[str]   = None
     created_at:  Optional[datetime] = None
     updated_at:  Optional[datetime] = None
-
+    images: Optional[List[str]] = None
     class Config:
         from_attributes = True

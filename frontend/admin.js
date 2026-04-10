@@ -436,13 +436,14 @@ async function changeInventoryPage(direction) {
 function showAddProductModal() {
   document.getElementById("modal-container").innerHTML = `
     <div class="modal-overlay">
-      <div class="modal-content">
+      <div class="modal-content" style="max-width:700px">
         <div class="modal-header">
           <h3><i class="fas fa-plus"></i> Add New Product</h3>
           <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
         <div class="modal-body">
           <form id="addProductForm" onsubmit="saveNewProduct(event)">
+
             <div class="form-row">
               <div class="form-group">
                 <label>SKU *</label>
@@ -453,6 +454,7 @@ function showAddProductModal() {
                 <input type="text" class="form-control" name="name" required placeholder="Mercedes Oil Filter">
               </div>
             </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>Brand *</label>
@@ -475,6 +477,7 @@ function showAddProductModal() {
                 </select>
               </div>
             </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>Type</label>
@@ -489,6 +492,7 @@ function showAddProductModal() {
                 <input type="text" class="form-control" name="oemNumber" placeholder="A 642 180 02 00">
               </div>
             </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>Cost Price (KES) *</label>
@@ -499,6 +503,7 @@ function showAddProductModal() {
                 <input type="number" class="form-control" name="price" required step="100" min="0">
               </div>
             </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>Current Stock *</label>
@@ -509,10 +514,12 @@ function showAddProductModal() {
                 <input type="number" class="form-control" name="minStock" required min="1" value="5">
               </div>
             </div>
+
             <div class="form-group">
               <label>Description</label>
               <textarea class="form-control" name="description" rows="3"></textarea>
             </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>Supplier</label>
@@ -523,10 +530,46 @@ function showAddProductModal() {
                 <input type="text" class="form-control" name="location" placeholder="Shelf A-12">
               </div>
             </div>
+
+            <!-- ── Image Upload Section ────────────────────── -->
+            <div class="form-group" style="margin-top:1.5rem;">
+              <label>
+                Product Images 
+                <small style="color:#999;font-weight:400;">(optional — max 6 images, 5MB each)</small>
+              </label>
+
+              <!-- Drop zone -->
+              <div class="image-drop-zone" id="addImageDropZone"
+                onclick="document.getElementById('addImageInput').click()"
+                ondragover="handleDragOver(event)"
+                ondragleave="handleDragLeave(event)"
+                ondrop="handleDrop(event, 'add')">
+                <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:#ccc;"></i>
+                <p style="margin:0.5rem 0 0;color:#999;font-size:0.9rem;">
+                  Drag & drop images here or <strong>click to browse</strong>
+                </p>
+                <p style="margin:0.25rem 0 0;color:#bbb;font-size:0.8rem;">
+                  JPG, PNG, WEBP — max 5MB each
+                </p>
+              </div>
+
+              <!-- Hidden file input — accepts multiple files -->
+              <input type="file" id="addImageInput" accept=".jpg,.jpeg,.png,.webp"
+                     multiple style="display:none"
+                     onchange="handleFileSelect(event, 'add')">
+
+              <!-- Preview grid — thumbnails appear here before upload -->
+              <div class="image-preview-grid" id="addImagePreview"></div>
+            </div>
+            <!-- ── End Image Upload Section ───────────────── -->
+
             <div class="form-actions">
               <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-              <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Product</button>
+              <button type="submit" class="btn-primary" id="addProductSubmitBtn">
+                <i class="fas fa-save"></i> Save Product
+              </button>
             </div>
+
           </form>
         </div>
       </div>
@@ -537,6 +580,7 @@ async function saveNewProduct(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
 
+  // ── Step 1: Build product payload ─────────────────────────
   const product = {
     sku:         formData.get("sku"),
     name:        formData.get("name"),
@@ -553,13 +597,51 @@ async function saveNewProduct(event) {
     location:    formData.get("location"),
   };
 
+  // ── Step 2: Disable submit button to prevent double submit ─
+  const submitBtn = document.getElementById("addProductSubmitBtn");
+  const originalBtnText = submitBtn.innerHTML;
+  submitBtn.disabled  = true;
+  submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
   try {
-    await api.createProduct(product);
+    // ── Step 3: Save the product first ───────────────────────
+    const newProduct = await api.createProduct(product);
+
+    // ── Step 4: Upload staged images if any ──────────────────
+    const stagedCount = (stagedFiles["add"] || []).length;
+
+    if (stagedCount > 0) {
+      // Update button to show upload progress
+      submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Uploading images...`;
+
+      const uploadedCount = await uploadStagedImages(newProduct.id, "add");
+
+      // Notify about partial failures if any images failed
+      if (uploadedCount < stagedCount) {
+        showNotification(
+          `Product saved. ${uploadedCount}/${stagedCount} images uploaded successfully.`,
+          "info"
+        );
+      } else {
+        showNotification(
+          `Product added with ${uploadedCount} image${uploadedCount !== 1 ? "s" : ""}!`,
+          "success"
+        );
+      }
+    } else {
+      // No images — just show success
+      showNotification("Product added successfully!", "success");
+    }
+
+    // ── Step 5: Close modal and refresh table ─────────────────
     closeModal();
     loadInventoryTable();
     updateQuickStats();
-    showNotification("Product added successfully!", "success");
+
   } catch (err) {
+    // ── Re-enable button on error so admin can try again ──────
+    submitBtn.disabled  = false;
+    submitBtn.innerHTML = originalBtnText;
     showNotification(err.message || "Failed to save product", "error");
   }
 }
@@ -567,15 +649,31 @@ async function saveNewProduct(event) {
 async function editProduct(productId) {
   try {
     const p = await api.getProduct(productId);
+
+    // Build existing images HTML — show thumbnails with delete buttons
+    const existingImagesHTML = (p.images && p.images.length > 0)
+      ? p.images.map(filename => `
+          <div class="image-preview-item" id="existing-${filename}">
+            <img src="${api.getImageUrl(filename)}" alt="Product image">
+            <button type="button" class="remove-preview-btn"
+                    onclick="deleteExistingImage('${p.id}', '${filename}')"
+                    title="Delete image">
+              &times;
+            </button>
+            <div class="preview-filename">saved</div>
+          </div>`).join("")
+      : `<p style="color:#999;font-size:0.85rem;margin:0;">No images yet</p>`;
+
     document.getElementById("modal-container").innerHTML = `
       <div class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:700px">
           <div class="modal-header">
             <h3><i class="fas fa-edit"></i> Edit Product</h3>
             <button class="modal-close" onclick="closeModal()">&times;</button>
           </div>
           <div class="modal-body">
             <form id="editProductForm" onsubmit="updateProduct(event, '${p.id}')">
+
               <div class="form-row">
                 <div class="form-group">
                   <label>SKU *</label>
@@ -586,6 +684,7 @@ async function editProduct(productId) {
                   <input type="text" class="form-control" name="name" required value="${p.name}">
                 </div>
               </div>
+
               <div class="form-row">
                 <div class="form-group">
                   <label>Brand *</label>
@@ -606,50 +705,181 @@ async function editProduct(productId) {
                   </select>
                 </div>
               </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Type</label>
+                  <select class="form-control" name="type">
+                    <option value="genuine"     ${p.type === "genuine"     ? "selected" : ""}>Genuine</option>
+                    <option value="oem"         ${p.type === "oem"         ? "selected" : ""}>OEM</option>
+                    <option value="aftermarket" ${p.type === "aftermarket" ? "selected" : ""}>Aftermarket</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>OEM Number</label>
+                  <input type="text" class="form-control" name="oem_number"
+                         value="${p.oem_number || ""}">
+                </div>
+              </div>
+
               <div class="form-row">
                 <div class="form-group">
                   <label>Cost Price (KES)</label>
-                  <input type="number" class="form-control" name="cost" step="100" value="${p.cost || ""}">
+                  <input type="number" class="form-control" name="cost"
+                         step="100" value="${p.cost || ""}">
                 </div>
                 <div class="form-group">
                   <label>Selling Price (KES) *</label>
-                  <input type="number" class="form-control" name="price" required step="100" value="${p.price}">
+                  <input type="number" class="form-control" name="price"
+                         required step="100" value="${p.price}">
                 </div>
               </div>
+
               <div class="form-row">
                 <div class="form-group">
                   <label>Stock *</label>
-                  <input type="number" class="form-control" name="stock" required min="0" value="${p.stock}">
+                  <input type="number" class="form-control" name="stock"
+                         required min="0" value="${p.stock}">
                 </div>
                 <div class="form-group">
                   <label>Min Stock *</label>
-                  <input type="number" class="form-control" name="minStock" required min="1" value="${p.min_stock}">
+                  <input type="number" class="form-control" name="minStock"
+                         required min="1" value="${p.min_stock}">
                 </div>
               </div>
+
               <div class="form-group">
                 <label>Description</label>
-                <textarea class="form-control" name="description" rows="3">${p.description || ""}</textarea>
+                <textarea class="form-control" name="description"
+                          rows="3">${p.description || ""}</textarea>
               </div>
+
               <div class="form-row">
                 <div class="form-group">
                   <label>Supplier</label>
-                  <input type="text" class="form-control" name="supplier" value="${p.supplier || ""}">
+                  <input type="text" class="form-control" name="supplier"
+                         value="${p.supplier || ""}">
                 </div>
                 <div class="form-group">
                   <label>Location</label>
-                  <input type="text" class="form-control" name="location" value="${p.location || ""}">
+                  <input type="text" class="form-control" name="location"
+                         value="${p.location || ""}">
                 </div>
               </div>
-              <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Product</button>
+
+              <!-- ── Image Management Section ──────────────── -->
+              <div class="form-group" style="margin-top:1.5rem;">
+                <label>
+                  Product Images
+                  <small style="color:#999;font-weight:400;">
+                    (${p.images ? p.images.length : 0}/6 — click &times; to remove)
+                  </small>
+                </label>
+
+                <!-- Existing saved images -->
+                <div class="image-preview-grid" id="existingImagesGrid">
+                  ${existingImagesHTML}
+                </div>
+
+                <!-- Only show upload zone if under the 6 image limit -->
+                ${(!p.images || p.images.length < 6) ? `
+                  <div class="image-drop-zone" id="editImageDropZone"
+                       style="margin-top:1rem;"
+                       onclick="document.getElementById('editImageInput').click()"
+                       ondragover="handleDragOver(event)"
+                       ondragleave="handleDragLeave(event)"
+                       ondrop="handleDrop(event, '${p.id}')">
+                    <i class="fas fa-cloud-upload-alt"
+                       style="font-size:1.5rem;color:#ccc;"></i>
+                    <p style="margin:0.5rem 0 0;color:#999;font-size:0.85rem;">
+                      Add more images — drag & drop or <strong>click to browse</strong>
+                    </p>
+                  </div>
+                  <input type="file" id="editImageInput"
+                         accept=".jpg,.jpeg,.png,.webp" multiple
+                         style="display:none"
+                         onchange="handleFileSelect(event, '${p.id}')">
+                  <div class="image-preview-grid" id="editImagePreview"></div>
+                ` : `
+                  <p style="color:#e67e22;font-size:0.85rem;margin-top:0.5rem;">
+                    <i class="fas fa-info-circle"></i>
+                    Maximum 6 images reached. Delete one to add more.
+                  </p>
+                `}
               </div>
+              <!-- ── End Image Management Section ─────────── -->
+
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal()">
+                  Cancel
+                </button>
+                <button type="submit" class="btn-primary" id="editProductSubmitBtn">
+                  <i class="fas fa-save"></i> Update Product
+                </button>
+              </div>
+
             </form>
           </div>
         </div>
       </div>`;
+
   } catch (err) {
     showNotification("Failed to load product", "error");
+  }
+}
+
+/**
+ * Delete an already-saved image from an existing product.
+ * Called from the edit modal's × button on saved image thumbnails.
+ */
+async function deleteExistingImage(productId, filename) {
+  if (!confirm("Delete this image? This cannot be undone.")) return;
+
+  try {
+    await api.deleteProductImage(productId, filename);
+
+    // Remove the thumbnail from the DOM without closing the modal
+    const thumb = document.getElementById(`existing-${filename}`);
+    if (thumb) thumb.remove();
+
+    showNotification("Image deleted successfully!", "success");
+
+    // Update the image count label
+    const grid  = document.getElementById("existingImagesGrid");
+    const count = grid ? grid.querySelectorAll(".image-preview-item").length : 0;
+    const label = document.querySelector(
+      '#editProductForm .form-group label small'
+    );
+    if (label) {
+      label.textContent = `(${count}/6 — click × to remove)`;
+    }
+
+    // Show upload zone if it was hidden due to image limit
+    if (count < 6 && !document.getElementById("editImageDropZone")) {
+      const zone = document.createElement("div");
+      zone.innerHTML = `
+        <div class="image-drop-zone" id="editImageDropZone"
+             style="margin-top:1rem;"
+             onclick="document.getElementById('editImageInput').click()"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event, '${productId}')">
+          <i class="fas fa-cloud-upload-alt"
+             style="font-size:1.5rem;color:#ccc;"></i>
+          <p style="margin:0.5rem 0 0;color:#999;font-size:0.85rem;">
+            Add more images — drag & drop or <strong>click to browse</strong>
+          </p>
+        </div>
+        <input type="file" id="editImageInput"
+               accept=".jpg,.jpeg,.png,.webp" multiple
+               style="display:none"
+               onchange="handleFileSelect(event, '${productId}')">
+        <div class="image-preview-grid" id="editImagePreview"></div>`;
+      grid.parentNode.insertBefore(zone, grid.nextSibling);
+    }
+
+  } catch (err) {
+    showNotification(err.message || "Failed to delete image", "error");
   }
 }
 
@@ -671,13 +901,45 @@ async function updateProduct(event, productId) {
     location:    formData.get("location"),
   };
 
+  // ── Disable submit button ──────────────────────────────────
+  const submitBtn      = document.getElementById("editProductSubmitBtn");
+  const originalText   = submitBtn.innerHTML;
+  submitBtn.disabled   = true;
+  submitBtn.innerHTML  = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
   try {
+    // ── Save product details first ─────────────────────────
     await api.updateProduct(productId, payload);
+
+    // ── Upload any newly staged images ─────────────────────
+    const stagedCount = (stagedFiles[productId] || []).length;
+
+    if (stagedCount > 0) {
+      submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Uploading images...`;
+      const uploadedCount = await uploadStagedImages(productId, productId);
+
+      if (uploadedCount < stagedCount) {
+        showNotification(
+          `Product updated. ${uploadedCount}/${stagedCount} images uploaded.`,
+          "info"
+        );
+      } else {
+        showNotification(
+          `Product updated with ${uploadedCount} new image${uploadedCount !== 1 ? "s" : ""}!`,
+          "success"
+        );
+      }
+    } else {
+      showNotification("Product updated successfully!", "success");
+    }
+
     closeModal();
     loadInventoryTable();
     updateQuickStats();
-    showNotification("Product updated successfully!", "success");
+
   } catch (err) {
+    submitBtn.disabled  = false;
+    submitBtn.innerHTML = originalText;
     showNotification(err.message || "Failed to update product", "error");
   }
 }
@@ -916,27 +1178,216 @@ function showNotification(message, type = "info") {
   setTimeout(() => { if (n.parentElement) n.remove(); }, 5000);
 }
 
+
+// ===================================
+// IMAGE UPLOAD HELPERS
+// ===================================
+
+// Holds staged files waiting to be uploaded after product is saved
+// Key: 'add' for add modal, or productId for edit modal
+const stagedFiles = {};
+
+/**
+ * Handle file input change event.
+ * Validates files and adds previews to the staging area.
+ */
+function handleFileSelect(event, context) {
+  const files = Array.from(event.target.files);
+  stageFiles(files, context);
+  // Reset input so same file can be re-selected if removed
+  event.target.value = "";
+}
+
+/**
+ * Handle drag over — show drop zone as active
+ */
+function handleDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add("drop-zone-active");
+}
+
+/**
+ * Handle drag leave — remove active state
+ */
+function handleDragLeave(event) {
+  event.currentTarget.classList.remove("drop-zone-active");
+}
+
+/**
+ * Handle file drop onto drop zone
+ */
+function handleDrop(event, context) {
+  event.preventDefault();
+  event.currentTarget.classList.remove("drop-zone-active");
+  const files = Array.from(event.dataTransfer.files);
+  stageFiles(files, context);
+}
+
+/**
+ * Validate and stage files for upload.
+ * Shows preview thumbnails in the preview grid.
+ */
+function stageFiles(files, context) {
+  if (!stagedFiles[context]) stagedFiles[context] = [];
+
+  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  const maxSize      = 5 * 1024 * 1024; // 5MB
+  const maxImages    = 6;
+
+  for (const file of files) {
+    // Validate type
+    if (!allowedTypes.includes(file.type)) {
+      showNotification(`${file.name}: Invalid file type. Use JPG, PNG, or WEBP.`, "error");
+      continue;
+    }
+
+    // Validate size
+    if (file.size > maxSize) {
+      showNotification(`${file.name}: File too large. Maximum size is 5MB.`, "error");
+      continue;
+    }
+
+    // Check total image limit
+    if (stagedFiles[context].length >= maxImages) {
+      showNotification(`Maximum ${maxImages} images allowed per product.`, "error");
+      break;
+    }
+
+    // Add to staged list and show preview
+    stagedFiles[context].push(file);
+    addImagePreview(file, context, stagedFiles[context].length - 1);
+  }
+}
+
+/**
+ * Add a thumbnail preview for a staged file.
+ */
+function addImagePreview(file, context, index) {
+  const previewGrid = document.getElementById(`${context === "add" ? "add" : "edit"}ImagePreview`);
+  if (!previewGrid) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const div = document.createElement("div");
+    div.className  = "image-preview-item";
+    div.id         = `preview-${context}-${index}`;
+    div.innerHTML  = `
+      <img src="${e.target.result}" alt="Preview">
+      <button type="button" class="remove-preview-btn"
+              onclick="removeStagedFile('${context}', ${index})"
+              title="Remove image">
+        &times;
+      </button>
+      <div class="preview-filename">${file.name.length > 15 
+        ? file.name.substring(0, 12) + "..." 
+        : file.name}
+      </div>`;
+    previewGrid.appendChild(div);
+  };
+  reader.readAsDataURL(file);
+}
+
+/**
+ * Remove a staged file from the list and its preview from the DOM.
+ */
+function removeStagedFile(context, index) {
+  if (!stagedFiles[context]) return;
+  stagedFiles[context].splice(index, 1);
+
+  // Re-render all previews cleanly
+  const previewGrid = document.getElementById(`${context === "add" ? "add" : "edit"}ImagePreview`);
+  if (!previewGrid) return;
+  previewGrid.innerHTML = "";
+  stagedFiles[context].forEach((file, i) => addImagePreview(file, context, i));
+}
+
+/**
+ * Upload all staged files for a given product ID.
+ * Called after the product has been saved and we have its ID.
+ * Returns count of successfully uploaded images.
+ */
+async function uploadStagedImages(productId, context) {
+  const files = stagedFiles[context] || [];
+  if (files.length === 0) return 0;
+
+  let successCount = 0;
+  for (const file of files) {
+    try {
+      await api.uploadProductImage(productId, file);
+      successCount++;
+    } catch (err) {
+      showNotification(`Failed to upload ${file.name}: ${err.message}`, "error");
+    }
+  }
+
+  // Clear staged files after upload attempt
+  delete stagedFiles[context];
+  return successCount;
+}
 // Inject shared styles
 const style = document.createElement("style");
 style.textContent = `
-  @keyframes slideInRight { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-  .brand-badge { display:inline-block; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; text-transform:uppercase; }
-  .brand-badge.mercedes { background:#e6f7ff; color:#1890ff; border:1px solid #91d5ff; }
-  .brand-badge.bmw { background:#f6ffed; color:#52c41a; border:1px solid #b7eb8f; }
-  .content-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; }
-  .header-actions { display:flex; gap:0.5rem; }
-  .btn-primary { background:var(--primary-red); color:white; border:none; padding:0.8rem 1.5rem; border-radius:4px; font-family:'Work Sans',sans-serif; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
-  .btn-secondary { background:white; color:var(--text-primary); border:1px solid #ddd; padding:0.8rem 1.5rem; border-radius:4px; font-family:'Work Sans',sans-serif; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
-  .filters-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; gap:1rem; flex-wrap:wrap; }
-  .search-box { position:relative; flex:1; max-width:300px; }
-  .search-box i { position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#999; }
-  .search-box input { width:100%; padding:0.8rem 1rem 0.8rem 2.5rem; border:1px solid #ddd; border-radius:4px; }
-  .filter-controls { display:flex; gap:0.5rem; flex-wrap:wrap; }
-  .filter-controls select, .filter-controls input { padding:0.8rem; border:1px solid #ddd; border-radius:4px; font-family:'Work Sans',sans-serif; }
-  .table-footer { display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem; padding:1rem; background:white; border-radius:0 0 8px 8px; border-top:1px solid #e9ecef; }
-  .pagination { display:flex; align-items:center; gap:1rem; }
-  .page-btn { padding:0.5rem 1rem; background:white; border:1px solid #ddd; border-radius:4px; cursor:pointer; }
-  .order-item, .alert-item { display:flex; justify-content:space-between; align-items:center; padding:0.8rem 0; border-bottom:1px solid #f0f0f0; }
-  .empty-state { text-align:center; color:#999; padding:2rem; font-style:italic; }
+/* ── Image Upload Styles ── */
+  .image-drop-zone {
+    border: 2px dashed #ddd;
+    border-radius: 6px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #fafafa;
+    margin-top: 0.5rem;
+  }
+  .image-drop-zone:hover,
+  .drop-zone-active {
+    border-color: var(--primary-red);
+    background: #fff5f5;
+  }
+  .image-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .image-preview-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .image-preview-item img {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    display: block;
+  }
+  .image-preview-item .preview-filename {
+    font-size: 0.65rem;
+    color: #666;
+    text-align: center;
+    padding: 2px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .remove-preview-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    background: rgba(196,0,0,0.85);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .remove-preview-btn:hover { background: #c40000; }
 `;
 document.head.appendChild(style);
