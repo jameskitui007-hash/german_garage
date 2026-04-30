@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from app.database import get_db
 from app.models.product import Product
+from app.models.category import Category
 from app.models.order import Order, OrderItem
 from app.models.customer import Customer
 from app.dependencies import get_current_admin
@@ -86,21 +87,23 @@ def get_sales_chart(db: Session = Depends(get_db), admin = Depends(get_current_a
 
 
 # ── GET inventory by category chart data ─────────────────────
+# Replace get_inventory_chart() with this:
+
 @router.get("/inventory-chart")
 def get_inventory_chart(db: Session = Depends(get_db), admin = Depends(get_current_admin)):
-    categories = ["brakes", "filters", "engine", "suspension", "electrical", "body"]
+    categories = db.query(Category).order_by(Category.sort_order).all()
     data   = []
     labels = []
 
     for cat in categories:
-        count = db.query(Product).filter(Product.category == cat).count()
+        count = db.query(Product).filter(Product.category_id == cat.id).count()
         if count > 0:
             data.append(count)
-            labels.append(cat.capitalize())
+            labels.append(cat.name)
 
     return {"labels": labels, "data": data}
 
-
+    
 # ── GET recent orders (last 5) ────────────────────────────────
 @router.get("/recent-orders")
 def get_recent_orders(db: Session = Depends(get_db), admin = Depends(get_current_admin)):

@@ -1,21 +1,27 @@
 /* ===================================
    SHOP STYLES
    =================================== */
+/* Replace .shop-container */
 .shop-container {
-  display: flex;
+  display:grid;
+  grid-template-columns: 320px minmax(0,1fr); 
   gap: 2rem;
   margin: 3rem auto;
 }
 
-/* Sidebar Styles */
+/* Replace .shop-sidebar */
 .shop-sidebar {
-  flex: 0 0 280px;
+  min-width: 0px;
+  min-height: 0px;
   background: var(--bg-light);
   padding: 2rem;
   height: fit-content;
   position: sticky;
   top: 100px;
 }
+
+/* Sidebar Header */
+
 
 .filter-section {
   margin-bottom: 3rem;
@@ -181,13 +187,14 @@
 
 /* Main Shop Area */
 .shop-main {
-  flex: 1;
+  max-width: 100%;
 }
 
 .shop-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 1.5rem;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid var(--border-color);
@@ -201,7 +208,9 @@
 .sort-options {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 #sort-by {
@@ -213,6 +222,7 @@
 }
 
 .results-count {
+  white-space: nowrap;
   font-size: 0.9rem;
   color: var(--text-secondary);
 }
@@ -755,7 +765,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .shop-container {
-    flex-direction: column;
+    grid-template-column: 1fr;
   }
   
   .shop-sidebar {
@@ -879,6 +889,257 @@
 
 .gallery-thumb.thumb-active {
   border-color: var(--primary-red);
+}
+
+/* ── Cascading Filter Additions ───────────────────────────── */
+
+.sidebar-search input {
+  width: 100%;
+  padding: 0.8rem;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.sidebar-search input:focus {
+  outline: none;
+  border-color: var(--primary-red);
+}
+
+.filter-select {
+  width: 100%;
+  padding: 0.8rem;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  font-family: 'Work Sans', sans-serif;
+  background: white;
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary-red);
+}
+
+.filter-hint {
+  background: #fff8e1;
+  border-left: 3px solid #ffc107;
+  padding: 0.8rem;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-count {
+  color: #999;
+  font-size: 0.8rem;
+  margin-left: auto;
+}
+
+.year-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.year-range input {
+  flex: 1;
+  padding: 0.7rem;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  font-family: 'Work Sans', sans-serif;
+  text-align: center;
+}
+
+.price-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.price-inputs input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.7rem;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  font-family: 'Work Sans', sans-serif;
+}
+
+
+/* Active filter tags */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.filter-tag {
+  background: #fff0f0;
+  border: 1px solid var(--primary-red);
+  color: var(--primary-red);
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.filter-tag-clear {
+  background: none;
+  border: none;
+  color: var(--primary-red);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.clear-all-btn {
+  background: none;
+  border: 1px solid #ddd;
+  color: #666;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: 'Work Sans', sans-serif;
+}
+
+.clear-all-btn:hover {
+  background: #f5f5f5;
+}
+
+/* Product compatibility badge */
+.product-category {
+  font-size: 0.75rem;
+  color: var(--primary-red);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.3rem;
+}
+
+.product-compat {
+  font-size: 0.78rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Stock badges */
+.badge-urgent {
+  background: #f44336;
+}
+
+.badge-low {
+  background: #ff9800;
+}
+
+/* Loading skeleton */
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+  width: 100%;
+}
+
+.skeleton {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-bottom: 1rem;
+}
+
+.skeleton-line {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-bottom: 0.8rem;
+  border-radius: 4px;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* No results */
+.no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #999;
+}
+
+.no-results h3 {
+  margin: 1rem 0 0.5rem;
+  color: #555;
+}
+
+/* Error state */
+.shop-error {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #f44336;
+}
+
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.7rem 2rem;
+  background: var(--primary-red);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Work Sans', sans-serif;
+}
+/* Keep price range inputs inside the sidebar */
+.shop-sidebar .price-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.shop-sidebar .price-inputs input,
+.shop-sidebar .filter-input-small {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.shop-sidebar .price-inputs span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.shop-sidebar .filter-section {
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* ===================================

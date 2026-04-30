@@ -23,7 +23,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 from app.routers import (
     auth, products, orders, customers,
     suppliers, settings as settings_router,
-    dashboard, reports, logs ,uploads , products
+    dashboard, reports, logs ,uploads , categories , shop
 )
 
 
@@ -122,6 +122,9 @@ app.include_router(settings_router.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
 app.include_router(logs.router)
+app.include_router(categories.router)  
+app.include_router(shop.router)
+
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────

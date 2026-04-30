@@ -1,31 +1,50 @@
 import re
 from pydantic import BaseModel, field_validator
-from typing import Optional , List
+from typing import Optional, List
 from datetime import datetime
 from app.utils.sanitize import strip_html
+from app.schemas.category import CategoryResponse
 
 
 # ── Allowed values ─────────────────────────────────────────────
-ALLOWED_BRANDS      = {"mercedes", "bmw"}
-ALLOWED_CATEGORIES  = {"brakes", "filters", "engine", "suspension", "electrical", "body"}
-ALLOWED_TYPES       = {"genuine", "oem", "aftermarket"}
+ALLOWED_BRANDS       = {"mercedes", "bmw"}
+ALLOWED_CATEGORIES   = {"brakes", "filters", "engine", "suspension", "electrical", "body"}
+ALLOWED_TYPES        = {"genuine", "oem", "aftermarket"}
+ALLOWED_ENGINE_TYPES = {"petrol", "diesel"}
+
+CURRENT_YEAR = 2026
 
 
 class ProductCreate(BaseModel):
     sku:         str
     name:        str
     brand:       str
-    category:    str
-    type:        Optional[str]  = "genuine"
-    oem_number:  Optional[str]  = None
+
+    # ── Category — NEW FK field (required going forward) ──────
+    category_id: int
+
+    # ── Old text field — kept for backward compatibility ───────
+    # Will be removed in Phase 8 cleanup
+    category:    Optional[str] = None
+
+    type:        Optional[str]       = "genuine"
+    oem_number:  Optional[str]       = None
     price:       float
-    cost:        Optional[float] = None
-    stock:       int             = 0
-    min_stock:   int             = 5
-    description: Optional[str]  = None
-    supplier:    Optional[str]  = None
-    location:    Optional[str]  = None
-    images:      Optional[List[str]] = None  # ← ADD THIS LINE
+    cost:        Optional[float]     = None
+    stock:       int                 = 0
+    min_stock:   int                 = 5
+    description: Optional[str]       = None
+    supplier:    Optional[str]       = None
+    location:    Optional[str]       = None
+    images:      Optional[List[str]] = None
+
+    # ── New filter fields ──────────────────────────────────────
+    model_type:  Optional[str]       = None   # e.g. "E200", "320i", "X5"
+    year_min:    Optional[int]       = None   # e.g. 2015
+    year_max:    Optional[int]       = None   # e.g. 2022
+    engine_type: Optional[str]       = None   # "petrol" | "diesel" | None
+
+    # ── Validators ────────────────────────────────────────────
 
     @field_validator("sku")
     @classmethod
@@ -35,9 +54,10 @@ class ProductCreate(BaseModel):
             raise ValueError("SKU cannot be empty")
         if len(v) > 50:
             raise ValueError("SKU must be 50 characters or fewer")
-        # Only allow alphanumeric, dashes, underscores
         if not re.match(r"^[A-Z0-9\-_]+$", v):
-            raise ValueError("SKU may only contain letters, numbers, dashes, and underscores")
+            raise ValueError(
+                "SKU may only contain letters, numbers, dashes, and underscores"
+            )
         return v
 
     @field_validator("name")
@@ -58,9 +78,19 @@ class ProductCreate(BaseModel):
             raise ValueError(f"brand must be one of: {ALLOWED_BRANDS}")
         return v
 
+    @field_validator("category_id")
+    @classmethod
+    def category_id_must_be_positive(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("category_id must be a positive integer")
+        return v
+
     @field_validator("category")
     @classmethod
-    def validate_category(cls, v: str) -> str:
+    def validate_category(cls, v: Optional[str]) -> Optional[str]:
+        # Still validated if supplied — for backward compat
+        if v is None:
+            return v
         v = v.lower().strip()
         if v not in ALLOWED_CATEGORIES:
             raise ValueError(f"category must be one of: {ALLOWED_CATEGORIES}")
@@ -101,12 +131,50 @@ class ProductCreate(BaseModel):
             raise ValueError("Minimum stock must be at least 1")
         return v
 
+    @field_validator("year_min")
+    @classmethod
+    def validate_year_min(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return v
+        if v < 1980 or v > CURRENT_YEAR:
+            raise ValueError(f"year_min must be between 1980 and {CURRENT_YEAR}")
+        return v
+
+    @field_validator("year_max")
+    @classmethod
+    def validate_year_max(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return v
+        if v < 1980 or v > CURRENT_YEAR:
+            raise ValueError(f"year_max must be between 1980 and {CURRENT_YEAR}")
+        return v
+
+    @field_validator("engine_type")
+    @classmethod
+    def validate_engine_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.lower().strip()
+        if v not in ALLOWED_ENGINE_TYPES:
+            raise ValueError(f"engine_type must be one of: {ALLOWED_ENGINE_TYPES}")
+        return v
+
+    @field_validator("model_type")
+    @classmethod
+    def sanitize_model_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = strip_html(v.strip())
+        if len(v) > 100:
+            raise ValueError("model_type must be 100 characters or fewer")
+        return v
+
     @field_validator("description")
     @classmethod
     def sanitize_description(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
-        return strip_html(v.strip())[:2000]  # cap at 2000 chars
+        return strip_html(v.strip())[:2000]
 
     @field_validator("supplier")
     @classmethod
@@ -131,20 +199,27 @@ class ProductCreate(BaseModel):
 
 
 class ProductUpdate(BaseModel):
-    sku:         Optional[str]   = None
-    name:        Optional[str]   = None
-    brand:       Optional[str]   = None
-    category:    Optional[str]   = None
-    type:        Optional[str]   = None
-    oem_number:  Optional[str]   = None
-    price:       Optional[float] = None
-    cost:        Optional[float] = None
-    stock:       Optional[int]   = None
-    min_stock:   Optional[int]   = None
-    description: Optional[str]   = None
-    supplier:    Optional[str]   = None
-    location:    Optional[str]   = None
-    images: Optional[List[str]] = None
+    """All fields optional — only send what you want to change."""
+
+    sku:         Optional[str]       = None
+    name:        Optional[str]       = None
+    brand:       Optional[str]       = None
+    category_id: Optional[int]       = None   # new FK
+    category:    Optional[str]       = None   # old text — kept for compat
+    type:        Optional[str]       = None
+    oem_number:  Optional[str]       = None
+    price:       Optional[float]     = None
+    cost:        Optional[float]     = None
+    stock:       Optional[int]       = None
+    min_stock:   Optional[int]       = None
+    description: Optional[str]       = None
+    supplier:    Optional[str]       = None
+    location:    Optional[str]       = None
+    images:      Optional[List[str]] = None
+    model_type:  Optional[str]       = None
+    year_min:    Optional[int]       = None
+    year_max:    Optional[int]       = None
+    engine_type: Optional[str]       = None
 
     @field_validator("name")
     @classmethod
@@ -163,12 +238,22 @@ class ProductUpdate(BaseModel):
             raise ValueError(f"brand must be one of: {ALLOWED_BRANDS}")
         return v.lower() if v else v
 
+    @field_validator("category_id")
+    @classmethod
+    def category_id_must_be_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 1:
+            raise ValueError("category_id must be a positive integer")
+        return v
+
     @field_validator("category")
     @classmethod
     def validate_category(cls, v: Optional[str]) -> Optional[str]:
-        if v and v.lower() not in ALLOWED_CATEGORIES:
+        if v is None:
+            return v
+        v = v.lower().strip()
+        if v not in ALLOWED_CATEGORIES:
             raise ValueError(f"category must be one of: {ALLOWED_CATEGORIES}")
-        return v.lower() if v else v
+        return v
 
     @field_validator("price")
     @classmethod
@@ -182,6 +267,34 @@ class ProductUpdate(BaseModel):
     def stock_must_be_non_negative(cls, v: Optional[int]) -> Optional[int]:
         if v is not None and v < 0:
             raise ValueError("Stock cannot be negative")
+        return v
+
+    @field_validator("year_min")
+    @classmethod
+    def validate_year_min(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return v
+        if v < 1980 or v > CURRENT_YEAR:
+            raise ValueError(f"year_min must be between 1980 and {CURRENT_YEAR}")
+        return v
+
+    @field_validator("year_max")
+    @classmethod
+    def validate_year_max(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return v
+        if v < 1980 or v > CURRENT_YEAR:
+            raise ValueError(f"year_max must be between 1980 and {CURRENT_YEAR}")
+        return v
+
+    @field_validator("engine_type")
+    @classmethod
+    def validate_engine_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.lower().strip()
+        if v not in ALLOWED_ENGINE_TYPES:
+            raise ValueError(f"engine_type must be one of: {ALLOWED_ENGINE_TYPES}")
         return v
 
     @field_validator("description")
@@ -207,22 +320,36 @@ class ProductUpdate(BaseModel):
 
 
 class ProductResponse(BaseModel):
+    """
+    Full product response.
+    Returns nested category object so frontend gets
+    name + slug without a second API call.
+    """
     id:          str
     sku:         str
     name:        str
     brand:       str
-    category:    str
-    type:        Optional[str]   = None
-    oem_number:  Optional[str]   = None
+
+    # Both included during transition period
+    category_id: Optional[int]              = None
+    category:    Optional[CategoryResponse] = None   # nested object
+
+    type:        Optional[str]              = None
+    oem_number:  Optional[str]              = None
     price:       float
-    cost:        Optional[float] = None
+    cost:        Optional[float]            = None
     stock:       int
     min_stock:   int
-    description: Optional[str]   = None
-    supplier:    Optional[str]   = None
-    location:    Optional[str]   = None
-    created_at:  Optional[datetime] = None
-    updated_at:  Optional[datetime] = None
-    images: Optional[List[str]] = None
+    description: Optional[str]             = None
+    supplier:    Optional[str]             = None
+    location:    Optional[str]             = None
+    images:      Optional[List[str]]       = None
+    model_type:  Optional[str]             = None
+    year_min:    Optional[int]             = None
+    year_max:    Optional[int]             = None
+    engine_type: Optional[str]             = None
+    created_at:  Optional[datetime]        = None
+    updated_at:  Optional[datetime]        = None
+
     class Config:
         from_attributes = True

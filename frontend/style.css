@@ -589,7 +589,7 @@ footer {
 /* ===================================
    RESPONSIVE DESIGN
    =================================== */
-@media (max-width: 900px) {
+@media (max-width: 1px) {
   .header-container {
     flex-wrap: wrap;
   }

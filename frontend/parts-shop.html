@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -69,91 +70,17 @@
 
 <div class="container shop-container">
   <div class="shop-sidebar">
-    <div class="filter-section">
-      <h3>Filter Parts</h3>
-      
-      <div class="filter-group">
-        <h4>Brand</h4>
-        <label class="filter-option">
-          <input type="checkbox" name="brand" value="mercedes" checked>
-          <span>Mercedes-Benz</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="brand" value="bmw" checked>
-          <span>BMW</span>
-        </label>
+    <!-- Sidebar is built dynamically by buildFilterSidebar() in shop.js -->
+    <div id="filter-sidebar">
+      <div style="text-align:center;padding:2rem;color:#999;">
+        <i class="fas fa-spinner fa-spin"></i>
       </div>
-      
-      <div class="filter-group">
-        <h4>Category</h4>
-        <label class="filter-option">
-          <input type="checkbox" name="category" value="brakes">
-          <span>Brake Parts</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="category" value="engine">
-          <span>Engine Parts</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="category" value="filters">
-          <span>Filters & Fluids</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="category" value="suspension">
-          <span>Suspension</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="category" value="electrical">
-          <span>Electrical</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="category" value="body">
-          <span>Body Parts</span>
-        </label>
-      </div>
-      
-      <div class="filter-group">
-        <h4>Part Type</h4>
-        <label class="filter-option">
-          <input type="checkbox" name="type" value="genuine">
-          <span>Genuine Parts</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="type" value="oem">
-          <span>OEM Parts</span>
-        </label>
-        <label class="filter-option">
-          <input type="checkbox" name="type" value="aftermarket">
-          <span>Quality Aftermarket</span>
-        </label>
-      </div>
-      
-      <div class="filter-group">
-        <h4>Price Range</h4>
-        <div class="price-slider">
-          <input type="range" min="0" max="50000" value="50000" class="price-range">
-          <div class="price-labels">
-            <span>KES 0</span>
-            <span>KES 50,000+</span>
-          </div>
-        </div>
-      </div>
-      
-      <button class="filter-btn" onclick="applyFilters()">Apply Filters</button>
-      <button class="filter-btn secondary" onclick="resetFilters()">Reset All</button>
-    </div>
-    
-    <div class="vin-checker">
-      <h3>VIN Compatibility Check</h3>
-      <p>Enter your VIN to verify part compatibility:</p>
-      <input type="text" id="vin-input" placeholder="WDD2050001A123456" maxlength="17">
-      <button onclick="checkVin()" class="vin-btn">Check Compatibility</button>
-      <div id="vin-result" class="vin-result"></div>
     </div>
   </div>
-  
+
   <div class="shop-main">
     <div class="shop-header">
+      <div id="active-filter-tags"></div>
       <h2>Featured Parts</h2>
       <div class="sort-options">
         <select id="sort-by">
@@ -166,11 +93,11 @@
         <span class="results-count">Showing <span id="results-count">12</span> products</span>
       </div>
     </div>
-    
+
     <div class="products-grid" id="products-grid">
       <!-- Products will be loaded here by JavaScript -->
     </div>
-    
+
     <div class="pagination">
       <button class="page-btn" onclick="changePage(-1)">← Previous</button>
       <span class="page-numbers">
@@ -180,6 +107,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Cart Sidebar -->
 <div class="cart-sidebar" id="cart-sidebar">
@@ -198,11 +126,11 @@
     </div>
     <div class="cart-total">
       <span>Shipping:</span>
-      <span id="cart-shipping">KES 500</span>
+      <span id="cart-shipping">KES 0</span>
     </div>
     <div class="cart-total grand-total">
       <span>Total:</span>
-      <span id="cart-grand-total">KES 500</span>
+      <span id="cart-grand-total">KES 0</span>
     </div>
     <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout</button>
     <p class="shipping-note">Free shipping for orders over KES 15,000 in Nairobi</p>
@@ -328,20 +256,14 @@
   </div>
 </footer>
 
+<!-- Replace the bottom script block with just this -->
 <script src="shop.js"></script>
 <script>
   const menuToggle = document.querySelector('.menu-toggle');
   const nav = document.querySelector('nav');
-  
   menuToggle.addEventListener('click', () => {
     nav.classList.toggle('active');
     menuToggle.classList.toggle('active');
-  });
-  
-  // Load products on page load
-  document.addEventListener('DOMContentLoaded', function() {
-    loadProducts();
-    updateCartCount();
   });
 </script>
 </body>

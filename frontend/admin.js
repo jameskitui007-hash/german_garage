@@ -9,6 +9,438 @@ let filteredInventory = [];
 const inventoryPerPage = 10;
 
 // ===================================
+// CATEGORY MANAGEMENT
+// ===================================
+
+function getCategoriesHTML() {
+  return `
+    <div class="categories-content">
+      <div class="content-header">
+        <div>
+          <h2><i class="fas fa-tags"></i> Category Management</h2>
+          <p>Manage the 14 standard part categories used for filtering</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-primary" onclick="showAddCategoryModal()">
+            <i class="fas fa-plus"></i> Add Category
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-table-container">
+        <table class="admin-table" id="categoriesTable">
+          <thead>
+            <tr>
+              <th style="width:60px;">Order</th>
+              <th>Category Name</th>
+              <th>Slug</th>
+              <th>Description</th>
+              <th style="width:100px;">Products</th>
+              <th style="width:120px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="categoriesTableBody">
+            <tr>
+              <td colspan="6" style="text-align:center;padding:2rem;">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:1.5rem;padding:1rem;
+                  background:#fff8f0;border-left:4px solid #ff9800;
+                  border-radius:4px;">
+        <p style="margin:0;font-size:0.85rem;color:#666;">
+          <i class="fas fa-info-circle" style="color:#ff9800;"></i>
+          <strong>Note:</strong> Categories with products cannot be deleted.
+          Reassign or delete the products first.
+          The 14 standard categories are pre-seeded and cover all common
+          Mercedes & BMW part types.
+        </p>
+      </div>
+    </div>`;
+}
+
+
+async function loadCategoriesTable() {
+  const tbody = document.getElementById("categoriesTableBody");
+
+  try {
+    const categories = await api.getCategories();
+
+    if (!categories.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center;padding:2rem;color:#999;">
+            No categories found.
+            <button onclick="showAddCategoryModal()"
+                    style="margin-left:1rem;padding:0.4rem 1rem;
+                           background:var(--primary-red);color:white;
+                           border:none;cursor:pointer;border-radius:4px;">
+              Add First Category
+            </button>
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = categories.map(cat => `
+      <tr>
+        <td>
+          <span style="display:inline-flex;align-items:center;
+                       justify-content:center;width:28px;height:28px;
+                       background:#f0f0f0;border-radius:50%;
+                       font-size:0.8rem;font-weight:600;color:#666;">
+            ${cat.sort_order}
+          </span>
+        </td>
+        <td>
+          <strong>${cat.name}</strong>
+        </td>
+        <td>
+          <code style="background:#f5f5f5;padding:0.2rem 0.5rem;
+                       border-radius:3px;font-size:0.8rem;color:#666;">
+            ${cat.slug}
+          </code>
+        </td>
+        <td>
+          <span style="font-size:0.85rem;color:#666;">
+            ${cat.description
+              ? cat.description.length > 60
+                ? cat.description.substring(0, 60) + "..."
+                : cat.description
+              : "<em style='color:#bbb;'>No description</em>"}
+          </span>
+        </td>
+        <td style="text-align:center;">
+          <span style="
+            display:inline-block;
+            padding:0.2rem 0.7rem;
+            border-radius:12px;
+            font-size:0.82rem;
+            font-weight:600;
+            background:${cat.product_count > 0 ? "#e6f7ff" : "#f5f5f5"};
+            color:${cat.product_count > 0 ? "#1890ff" : "#bbb"};
+            border:1px solid ${cat.product_count > 0 ? "#91d5ff" : "#e8e8e8"};
+          ">
+            ${cat.product_count}
+            ${cat.product_count === 1 ? "product" : "products"}
+          </span>
+        </td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn-icon btn-edit"
+                    onclick="showEditCategoryModal(${cat.id})"
+                    title="Edit Category">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn-icon btn-delete"
+                    onclick="deleteCategoryById(${cat.id}, '${cat.name}', ${cat.product_count})"
+                    title="${cat.product_count > 0
+                      ? "Cannot delete — has products"
+                      : "Delete Category"}"
+                    ${cat.product_count > 0 ? "disabled" : ""}
+                    style="${cat.product_count > 0
+                      ? "opacity:0.3;cursor:not-allowed;"
+                      : ""}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`).join("");
+
+  } catch (err) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center;padding:2rem;color:#f44336;">
+          <i class="fas fa-exclamation-circle"></i>
+          Failed to load categories. Please refresh.
+        </td>
+      </tr>`;
+    showNotification("Failed to load categories", "error");
+  }
+}
+
+
+// ── ADD CATEGORY MODAL ────────────────────────────────────────
+function showAddCategoryModal() {
+  document.getElementById("modal-container").innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-content" style="max-width:500px;">
+        <div class="modal-header">
+          <h3><i class="fas fa-plus"></i> Add New Category</h3>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="addCategoryForm" onsubmit="saveNewCategory(event)">
+
+            <div class="form-group">
+              <label>Category Name *</label>
+              <input type="text"
+                     class="form-control"
+                     name="name"
+                     required
+                     placeholder="e.g. Engine Components"
+                     oninput="autoGenerateSlug(this.value)">
+            </div>
+
+            <div class="form-group">
+              <label>
+                Slug
+                <small style="color:#999;font-weight:400;">
+                  (auto-generated — edit if needed)
+                </small>
+              </label>
+              <input type="text"
+                     class="form-control"
+                     name="slug"
+                     id="categorySlugInput"
+                     placeholder="engine-components"
+                     style="font-family:monospace;">
+              <small style="color:#aaa;font-size:0.78rem;">
+                Lowercase letters, numbers, and hyphens only
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>Description</label>
+              <textarea class="form-control"
+                        name="description"
+                        rows="3"
+                        placeholder="Brief description of what parts this category covers...">
+              </textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Sort Order</label>
+              <input type="number"
+                     class="form-control"
+                     name="sort_order"
+                     value="15"
+                     min="1"
+                     max="999"
+                     style="width:120px;">
+              <small style="color:#aaa;font-size:0.78rem;">
+                Lower number = shown first in filter sidebar
+              </small>
+            </div>
+
+            <div class="form-actions">
+              <button type="button"
+                      class="btn-secondary"
+                      onclick="closeModal()">
+                Cancel
+              </button>
+              <button type="submit"
+                      class="btn-primary"
+                      id="addCategorySubmitBtn">
+                <i class="fas fa-save"></i> Save Category
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>`;
+}
+
+
+/**
+ * Auto-generates a slug from the category name as the user types.
+ * Mirrors the backend slugify() logic.
+ */
+function autoGenerateSlug(name) {
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[&/\\]/g, " ")      // replace special chars with space
+    .replace(/[^a-z0-9]+/g, "-")  // replace non-alphanumeric with hyphen
+    .replace(/^-+|-+$/g, "");     // strip leading/trailing hyphens
+
+  const slugInput = document.getElementById("categorySlugInput");
+  if (slugInput) slugInput.value = slug;
+}
+
+
+async function saveNewCategory(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+
+  const payload = {
+    name:        formData.get("name").trim(),
+    slug:        formData.get("slug").trim() || null,
+    description: formData.get("description").trim() || null,
+    sort_order:  parseInt(formData.get("sort_order")) || 15,
+  };
+
+  const submitBtn    = document.getElementById("addCategorySubmitBtn");
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled  = true;
+  submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
+  try {
+    await api.createCategory(payload);
+    closeModal();
+    loadCategoriesTable();
+    showNotification(`Category "${payload.name}" added successfully!`, "success");
+  } catch (err) {
+    submitBtn.disabled  = false;
+    submitBtn.innerHTML = originalText;
+    showNotification(err.message || "Failed to save category", "error");
+  }
+}
+
+
+// ── EDIT CATEGORY MODAL ───────────────────────────────────────
+async function showEditCategoryModal(categoryId) {
+  try {
+    const cat = await api.getCategory(categoryId);
+
+    document.getElementById("modal-container").innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-content" style="max-width:500px;">
+          <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Edit Category</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="editCategoryForm"
+                  onsubmit="updateCategory(event, ${cat.id})">
+
+              <div class="form-group">
+                <label>Category Name *</label>
+                <input type="text"
+                       class="form-control"
+                       name="name"
+                       required
+                       value="${cat.name}">
+              </div>
+
+              <div class="form-group">
+                <label>
+                  Slug
+                  <small style="color:#999;font-weight:400;">
+                    (changing this may break existing filter URLs)
+                  </small>
+                </label>
+                <input type="text"
+                       class="form-control"
+                       name="slug"
+                       value="${cat.slug}"
+                       style="font-family:monospace;">
+              </div>
+
+              <div class="form-group">
+                <label>Description</label>
+                <textarea class="form-control"
+                          name="description"
+                          rows="3">${cat.description || ""}</textarea>
+              </div>
+
+              <div class="form-group">
+                <label>Sort Order</label>
+                <input type="number"
+                       class="form-control"
+                       name="sort_order"
+                       value="${cat.sort_order}"
+                       min="1" max="999"
+                       style="width:120px;">
+              </div>
+
+              ${cat.product_count > 0 ? `
+                <div style="background:#fff8e1;border-left:4px solid #ffc107;
+                            padding:0.75rem;margin-bottom:1rem;font-size:0.85rem;">
+                  <i class="fas fa-info-circle" style="color:#ffc107;"></i>
+                  This category has <strong>${cat.product_count} product(s)</strong>.
+                  Renaming it will update the display immediately.
+                </div>` : ""}
+
+              <div class="form-actions">
+                <button type="button"
+                        class="btn-secondary"
+                        onclick="closeModal()">
+                  Cancel
+                </button>
+                <button type="submit"
+                        class="btn-primary"
+                        id="editCategorySubmitBtn">
+                  <i class="fas fa-save"></i> Update Category
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>`;
+
+  } catch (err) {
+    showNotification("Failed to load category", "error");
+  }
+}
+
+
+async function updateCategory(event, categoryId) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+
+  const payload = {
+    name:        formData.get("name").trim(),
+    slug:        formData.get("slug").trim() || null,
+    description: formData.get("description").trim() || null,
+    sort_order:  parseInt(formData.get("sort_order")) || 1,
+  };
+
+  const submitBtn    = document.getElementById("editCategorySubmitBtn");
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled  = true;
+  submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
+  try {
+    await api.updateCategory(categoryId, payload);
+    closeModal();
+    loadCategoriesTable();
+    showNotification("Category updated successfully!", "success");
+  } catch (err) {
+    submitBtn.disabled  = false;
+    submitBtn.innerHTML = originalText;
+    showNotification(err.message || "Failed to update category", "error");
+  }
+}
+
+
+// ── DELETE CATEGORY ───────────────────────────────────────────
+async function deleteCategoryById(categoryId, categoryName, productCount) {
+  // Hard block — should never reach here since button is disabled
+  // but double-check for safety
+  if (productCount > 0) {
+    showNotification(
+      `Cannot delete "${categoryName}" — it has ${productCount} product(s). ` +
+      `Reassign them first.`,
+      "error"
+    );
+    return;
+  }
+
+  if (!confirm(
+    `Delete category "${categoryName}"?\n\n` +
+    `This cannot be undone.`
+  )) return;
+
+  try {
+    await api.deleteCategory(categoryId);
+    loadCategoriesTable();
+    showNotification(
+      `Category "${categoryName}" deleted successfully!`,
+      "success"
+    );
+  } catch (err) {
+    showNotification(err.message || "Failed to delete category", "error");
+  }
+}
+
+// ===================================
 // SECTION LOADER
 // ===================================
 function loadSection(section) {
@@ -25,6 +457,10 @@ function loadSection(section) {
     case "dashboard":
       contentArea.innerHTML = getDashboardHTML();
       loadDashboardData();
+      break;
+    case 'categories':
+      contentArea.innerHTML = getCategoriesHTML();
+      loadCategoriesTable();
       break;
     case "inventory":
       contentArea.innerHTML = getInventoryHTML();
@@ -261,7 +697,8 @@ function getInventoryHTML() {
           <button class="btn-primary" onclick="showAddProductModal()">
             <i class="fas fa-plus"></i> Add New Product
           </button>
-          <button class="btn-secondary" onclick="window.open(API_BASE + '/api/products/export/csv')">
+          <button class="btn-secondary"
+                  onclick="window.open(API_BASE + '/api/products/export/csv')">
             <i class="fas fa-download"></i> Export CSV
           </button>
         </div>
@@ -270,24 +707,23 @@ function getInventoryHTML() {
       <div class="filters-bar">
         <div class="search-box">
           <i class="fas fa-search"></i>
-          <input type="text" id="inventorySearch" placeholder="Search products..."
+          <input type="text" id="inventorySearch"
+                 placeholder="Search by name, SKU, OEM number..."
                  onkeyup="searchInventory()">
         </div>
         <div class="filter-controls">
-          <select id="categoryFilter" onchange="filterInventory()">
-            <option value="">All Categories</option>
-            <option value="brakes">Brakes</option>
-            <option value="filters">Filters</option>
-            <option value="engine">Engine</option>
-            <option value="suspension">Suspension</option>
-            <option value="electrical">Electrical</option>
-            <option value="body">Body</option>
-          </select>
           <select id="brandFilter" onchange="filterInventory()">
             <option value="">All Brands</option>
             <option value="mercedes">Mercedes-Benz</option>
             <option value="bmw">BMW</option>
           </select>
+
+          <!-- Category filter — populated dynamically from API -->
+          <select id="categoryFilter" onchange="filterInventory()">
+            <option value="">All Categories</option>
+            <!-- Options injected by loadCategoryFilter() -->
+          </select>
+
           <select id="stockFilter" onchange="filterInventory()">
             <option value="">All Stock Levels</option>
             <option value="low">Low Stock</option>
@@ -313,9 +749,11 @@ function getInventoryHTML() {
               </tr>
             </thead>
             <tbody id="inventoryTableBody">
-              <tr><td colspan="8" style="text-align:center">
-                <i class="fas fa-spinner fa-spin"></i> Loading...
-              </td></tr>
+              <tr>
+                <td colspan="8" style="text-align:center;padding:2rem;">
+                  <i class="fas fa-spinner fa-spin"></i> Loading...
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -326,11 +764,16 @@ function getInventoryHTML() {
           Showing <span id="inventoryCount">0</span> products
         </div>
         <div class="pagination">
-          <button class="page-btn" onclick="changeInventoryPage(-1)">← Previous</button>
+          <button class="page-btn" onclick="changeInventoryPage(-1)">
+            ← Previous
+          </button>
           <span class="page-numbers">
-            Page <span id="inventoryPage">1</span> of <span id="inventoryTotalPages">1</span>
+            Page <span id="inventoryPage">1</span>
+            of <span id="inventoryTotalPages">1</span>
           </span>
-          <button class="page-btn" onclick="changeInventoryPage(1)">Next →</button>
+          <button class="page-btn" onclick="changeInventoryPage(1)">
+            Next →
+          </button>
         </div>
       </div>
     </div>`;
@@ -338,8 +781,14 @@ function getInventoryHTML() {
 
 async function loadInventoryTable() {
   try {
-    const res = await api.getProducts(`?page=${inventoryPage}&per_page=${inventoryPerPage}`);
-    filteredInventory = res.products;
+    // Load categories for the filter dropdown and products in parallel
+    const [res] = await Promise.all([
+      api.getProducts(
+        `?page=${inventoryPage}&per_page=${inventoryPerPage}`
+      ),
+      loadCategoryFilter()   // populates category dropdown
+    ]);
+
     renderInventoryTable(res);
   } catch (err) {
     showNotification("Failed to load inventory", "error");
@@ -348,8 +797,15 @@ async function loadInventoryTable() {
 
 function renderInventoryTable(res) {
   const tbody = document.getElementById("inventoryTableBody");
+
   if (!res.products.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">No products found</td></tr>`;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align:center;padding:2rem;color:#999;">
+          <i class="fas fa-box-open" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+          No products found
+        </td>
+      </tr>`;
     return;
   }
 
@@ -359,29 +815,46 @@ function renderInventoryTable(res) {
       <td>
         <div class="product-info">
           <strong>${p.name}</strong>
-          <small>${p.oem_number || ""}</small>
+          <small style="color:#999;">${p.oem_number || ""}</small>
         </div>
       </td>
-      <td><span class="brand-badge ${p.brand}">${p.brand.toUpperCase()}</span></td>
-      <td>${p.category}</td>
+      <td>
+        <span class="brand-badge ${p.brand}">
+          ${p.brand.toUpperCase()}
+        </span>
+      </td>
+      <td>
+        <!-- Show category name from nested object, fallback to ID -->
+        ${p.category
+          ? `<span class="category-badge">${p.category.name}</span>`
+          : `<span style="color:#bbb;font-size:0.8rem;">Uncategorised</span>`
+        }
+      </td>
       <td>
         <div class="stock-info">
           <span class="stock-quantity">${p.stock}</span>
-          <small>Min: ${p.min_stock}</small>
+          <small style="color:#999;">Min: ${p.min_stock}</small>
         </div>
       </td>
       <td>KES ${p.price.toLocaleString()}</td>
       <td>${getStockStatusBadge(p.stock, p.min_stock)}</td>
       <td>
         <div class="action-buttons">
-          <button class="btn-icon btn-edit" onclick="editProduct('${p.id}')" title="Edit">        <i class="fas fa-edit"></i>
+          <button class="btn-icon btn-edit"
+                  onclick="editProduct('${p.id}')"
+                  title="Edit Product">
+            <i class="fas fa-edit"></i>
           </button>
-          <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Delete">            <i class="fas fa-trash"></i>
+          <button class="btn-icon btn-delete"
+                  onclick="deleteProduct('${p.id}')"
+                  title="Delete Product">
+            <i class="fas fa-trash"></i>
           </button>
         </div>
       </td>
     </tr>`).join("");
 
+  // Update pagination info
   document.getElementById("inventoryCount").textContent      = res.total;
   document.getElementById("inventoryPage").textContent       = res.page;
   document.getElementById("inventoryTotalPages").textContent = res.total_pages;
@@ -406,15 +879,15 @@ async function searchInventory() {
 }
 
 async function filterInventory() {
-  const category = document.getElementById("categoryFilter").value;
-  const brand    = document.getElementById("brandFilter").value;
-  const stock    = document.getElementById("stockFilter").value;
-  inventoryPage  = 1;
+  const brand      = document.getElementById("brandFilter").value;
+  const categoryId = document.getElementById("categoryFilter").value;
+  const stock      = document.getElementById("stockFilter").value;
+  inventoryPage    = 1;
 
   let params = `?page=1&per_page=${inventoryPerPage}`;
-  if (category) params += `&category=${category}`;
-  if (brand)    params += `&brand=${brand}`;
-  if (stock)    params += `&stock_level=${stock}`;
+  if (brand)      params += `&brand=${brand}`;
+  if (categoryId) params += `&category_id=${categoryId}`;
+  if (stock)      params += `&stock_level=${stock}`;
 
   try {
     const res = await api.getProducts(params);
@@ -429,11 +902,51 @@ async function changeInventoryPage(direction) {
   if (inventoryPage < 1) inventoryPage = 1;
   await loadInventoryTable();
 }
+/**
+ * Populates the category filter dropdown in the inventory table
+ * by fetching categories from the API.
+ * Called once when the inventory section loads.
+ */
+async function loadCategoryFilter() {
+  const select = document.getElementById("categoryFilter");
+  if (!select) return;
 
+  try {
+    const categories = await api.getCategories();
+
+    // Keep the "All Categories" option, append the rest
+    const options = categories.map(cat =>
+      `<option value="${cat.id}">
+        ${cat.name}
+        ${cat.product_count > 0
+          ? `(${cat.product_count})`
+          : ""}
+      </option>`
+    ).join("");
+
+    select.innerHTML = `<option value="">All Categories</option>${options}`;
+
+  } catch (err) {
+    // Non-critical — filter just won't have categories
+    console.warn("Could not load categories for filter:", err.message);
+  }
+}
 // ===================================
 // PRODUCT MODALS
 // ===================================
-function showAddProductModal() {
+async function showAddProductModal() {
+  // ── Load categories from API before building the modal ─────
+  let categoriesOptions = '<option value="">Loading...</option>';
+  try {
+    const categories = await api.getCategories();
+    categoriesOptions = '<option value="">Select Category</option>' +
+      categories.map(cat =>
+        `<option value="${cat.id}">${cat.name}</option>`
+      ).join("");
+  } catch (err) {
+    categoriesOptions = '<option value="">Failed to load categories</option>';
+  }
+
   document.getElementById("modal-container").innerHTML = `
     <div class="modal-overlay">
       <div class="modal-content" style="max-width:700px">
@@ -447,11 +960,13 @@ function showAddProductModal() {
             <div class="form-row">
               <div class="form-group">
                 <label>SKU *</label>
-                <input type="text" class="form-control" name="sku" required placeholder="MB-OF-001">
+                <input type="text" class="form-control" name="sku"
+                       required placeholder="MB-OF-001">
               </div>
               <div class="form-group">
                 <label>Product Name *</label>
-                <input type="text" class="form-control" name="name" required placeholder="Mercedes Oil Filter">
+                <input type="text" class="form-control" name="name"
+                       required placeholder="Mercedes Oil Filter">
               </div>
             </div>
 
@@ -466,14 +981,8 @@ function showAddProductModal() {
               </div>
               <div class="form-group">
                 <label>Category *</label>
-                <select class="form-control" name="category" required>
-                  <option value="">Select Category</option>
-                  <option value="brakes">Brakes</option>
-                  <option value="filters">Filters</option>
-                  <option value="engine">Engine</option>
-                  <option value="suspension">Suspension</option>
-                  <option value="electrical">Electrical</option>
-                  <option value="body">Body Parts</option>
+                <select class="form-control" name="category_id" required>
+                  ${categoriesOptions}
                 </select>
               </div>
             </div>
@@ -489,62 +998,109 @@ function showAddProductModal() {
               </div>
               <div class="form-group">
                 <label>OEM Number</label>
-                <input type="text" class="form-control" name="oemNumber" placeholder="A 642 180 02 00">
+                <input type="text" class="form-control" name="oem_number"
+                       placeholder="A 642 180 02 00">
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label>Cost Price (KES) *</label>
-                <input type="number" class="form-control" name="cost" required step="100" min="0">
+                <input type="number" class="form-control" name="cost"
+                       required step="100" min="0">
               </div>
               <div class="form-group">
                 <label>Selling Price (KES) *</label>
-                <input type="number" class="form-control" name="price" required step="100" min="0">
+                <input type="number" class="form-control" name="price"
+                       required step="100" min="0">
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label>Current Stock *</label>
-                <input type="number" class="form-control" name="stock" required min="0">
+                <input type="number" class="form-control" name="stock"
+                       required min="0">
               </div>
               <div class="form-group">
                 <label>Minimum Stock *</label>
-                <input type="number" class="form-control" name="minStock" required min="1" value="5">
+                <input type="number" class="form-control" name="min_stock"
+                       required min="1" value="5">
               </div>
             </div>
 
+            <!-- ── Vehicle Compatibility ──────────────────── -->
+            <div class="form-section-label">
+              <i class="fas fa-car"></i> Vehicle Compatibility
+              <small style="color:#999;font-weight:400;">
+                (optional — leave blank if part fits all)
+              </small>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Model Type</label>
+                <input type="text" class="form-control" name="model_type"
+                       placeholder="e.g. E200, E350, 320i, X5">
+              </div>
+              <div class="form-group">
+                <label>Engine Type</label>
+                <select class="form-control" name="engine_type">
+                  <option value="">Petrol & Diesel (both)</option>
+                  <option value="petrol">Petrol only</option>
+                  <option value="diesel">Diesel only</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Compatible From (Year)</label>
+                <input type="number" class="form-control" name="year_min"
+                       min="1980" max="2026" placeholder="e.g. 2015">
+              </div>
+              <div class="form-group">
+                <label>Compatible To (Year)</label>
+                <input type="number" class="form-control" name="year_max"
+                       min="1980" max="2026" placeholder="e.g. 2022">
+              </div>
+            </div>
+            <!-- ── End Vehicle Compatibility ─────────────── -->
+
             <div class="form-group">
               <label>Description</label>
-              <textarea class="form-control" name="description" rows="3"></textarea>
+              <textarea class="form-control" name="description"
+                        rows="3"></textarea>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label>Supplier</label>
-                <input type="text" class="form-control" name="supplier" placeholder="Mercedes-Benz Kenya">
+                <input type="text" class="form-control" name="supplier"
+                       placeholder="Mercedes-Benz Kenya">
               </div>
               <div class="form-group">
                 <label>Location</label>
-                <input type="text" class="form-control" name="location" placeholder="Shelf A-12">
+                <input type="text" class="form-control" name="location"
+                       placeholder="Shelf A-12">
               </div>
             </div>
 
-            <!-- ── Image Upload Section ────────────────────── -->
+            <!-- ── Image Upload Section (unchanged) ──────── -->
             <div class="form-group" style="margin-top:1.5rem;">
               <label>
-                Product Images 
-                <small style="color:#999;font-weight:400;">(optional — max 6 images, 5MB each)</small>
+                Product Images
+                <small style="color:#999;font-weight:400;">
+                  (optional — max 6 images, 5MB each)
+                </small>
               </label>
-
-              <!-- Drop zone -->
               <div class="image-drop-zone" id="addImageDropZone"
                 onclick="document.getElementById('addImageInput').click()"
                 ondragover="handleDragOver(event)"
                 ondragleave="handleDragLeave(event)"
                 ondrop="handleDrop(event, 'add')">
-                <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:#ccc;"></i>
+                <i class="fas fa-cloud-upload-alt"
+                   style="font-size:2rem;color:#ccc;"></i>
                 <p style="margin:0.5rem 0 0;color:#999;font-size:0.9rem;">
                   Drag & drop images here or <strong>click to browse</strong>
                 </p>
@@ -552,20 +1108,19 @@ function showAddProductModal() {
                   JPG, PNG, WEBP — max 5MB each
                 </p>
               </div>
-
-              <!-- Hidden file input — accepts multiple files -->
-              <input type="file" id="addImageInput" accept=".jpg,.jpeg,.png,.webp"
+              <input type="file" id="addImageInput"
+                     accept=".jpg,.jpeg,.png,.webp"
                      multiple style="display:none"
                      onchange="handleFileSelect(event, 'add')">
-
-              <!-- Preview grid — thumbnails appear here before upload -->
               <div class="image-preview-grid" id="addImagePreview"></div>
             </div>
             <!-- ── End Image Upload Section ───────────────── -->
 
             <div class="form-actions">
-              <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-              <button type="submit" class="btn-primary" id="addProductSubmitBtn">
+              <button type="button" class="btn-secondary"
+                      onclick="closeModal()">Cancel</button>
+              <button type="submit" class="btn-primary"
+                      id="addProductSubmitBtn">
                 <i class="fas fa-save"></i> Save Product
               </button>
             </div>
@@ -580,46 +1135,55 @@ async function saveNewProduct(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
 
-  // ── Step 1: Build product payload ─────────────────────────
+  // ── Build product payload with new fields ──────────────────
   const product = {
     sku:         formData.get("sku"),
     name:        formData.get("name"),
     brand:       formData.get("brand"),
-    category:    formData.get("category"),
+    category_id: parseInt(formData.get("category_id")),
     type:        formData.get("type"),
-    oem_number:  formData.get("oemNumber"),
+    oem_number:  formData.get("oem_number") || null,
     cost:        parseFloat(formData.get("cost")),
     price:       parseFloat(formData.get("price")),
     stock:       parseInt(formData.get("stock")),
-    min_stock:   parseInt(formData.get("minStock")),
-    description: formData.get("description"),
-    supplier:    formData.get("supplier"),
-    location:    formData.get("location"),
+    min_stock:   parseInt(formData.get("min_stock")),
+    description: formData.get("description") || null,
+    supplier:    formData.get("supplier")    || null,
+    location:    formData.get("location")    || null,
+
+    // ── New vehicle compatibility fields ───────────────────
+    model_type:  formData.get("model_type")  || null,
+    engine_type: formData.get("engine_type") || null,
+
+    // Only send year fields if they have values
+    year_min: formData.get("year_min")
+              ? parseInt(formData.get("year_min")) : null,
+    year_max: formData.get("year_max")
+              ? parseInt(formData.get("year_max")) : null,
   };
 
-  // ── Step 2: Disable submit button to prevent double submit ─
-  const submitBtn = document.getElementById("addProductSubmitBtn");
-  const originalBtnText = submitBtn.innerHTML;
-  submitBtn.disabled  = true;
-  submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+  // ── Disable submit button to prevent double submit ─────────
+  const submitBtn      = document.getElementById("addProductSubmitBtn");
+  const originalText   = submitBtn.innerHTML;
+  submitBtn.disabled   = true;
+  submitBtn.innerHTML  = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
 
   try {
-    // ── Step 3: Save the product first ───────────────────────
+    // ── Step 1: Save the product ───────────────────────────
     const newProduct = await api.createProduct(product);
 
-    // ── Step 4: Upload staged images if any ──────────────────
+    // ── Step 2: Upload staged images if any ───────────────
     const stagedCount = (stagedFiles["add"] || []).length;
 
     if (stagedCount > 0) {
-      // Update button to show upload progress
-      submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Uploading images...`;
+      submitBtn.innerHTML =
+        `<i class="fas fa-spinner fa-spin"></i> Uploading images...`;
 
       const uploadedCount = await uploadStagedImages(newProduct.id, "add");
 
-      // Notify about partial failures if any images failed
       if (uploadedCount < stagedCount) {
         showNotification(
-          `Product saved. ${uploadedCount}/${stagedCount} images uploaded successfully.`,
+          `Product saved. ${uploadedCount}/${stagedCount} images uploaded.`,
           "info"
         );
       } else {
@@ -629,28 +1193,37 @@ async function saveNewProduct(event) {
         );
       }
     } else {
-      // No images — just show success
       showNotification("Product added successfully!", "success");
     }
 
-    // ── Step 5: Close modal and refresh table ─────────────────
     closeModal();
     loadInventoryTable();
     updateQuickStats();
 
   } catch (err) {
-    // ── Re-enable button on error so admin can try again ──────
     submitBtn.disabled  = false;
-    submitBtn.innerHTML = originalBtnText;
+    submitBtn.innerHTML = originalText;
     showNotification(err.message || "Failed to save product", "error");
   }
 }
 
 async function editProduct(productId) {
   try {
-    const p = await api.getProduct(productId);
+    // ── Load product and categories in parallel ─────────────
+    const [p, categories] = await Promise.all([
+      api.getProduct(productId),
+      api.getCategories()
+    ]);
 
-    // Build existing images HTML — show thumbnails with delete buttons
+    // ── Build category dropdown with current value selected ─
+    const categoriesOptions = categories.map(cat =>
+      `<option value="${cat.id}"
+        ${p.category_id === cat.id ? "selected" : ""}>
+        ${cat.name}
+      </option>`
+    ).join("");
+
+    // ── Build existing images HTML ──────────────────────────
     const existingImagesHTML = (p.images && p.images.length > 0)
       ? p.images.map(filename => `
           <div class="image-preview-item" id="existing-${filename}">
@@ -662,7 +1235,9 @@ async function editProduct(productId) {
             </button>
             <div class="preview-filename">saved</div>
           </div>`).join("")
-      : `<p style="color:#999;font-size:0.85rem;margin:0;">No images yet</p>`;
+      : `<p style="color:#999;font-size:0.85rem;margin:0;">
+           No images yet
+         </p>`;
 
     document.getElementById("modal-container").innerHTML = `
       <div class="modal-overlay">
@@ -672,16 +1247,19 @@ async function editProduct(productId) {
             <button class="modal-close" onclick="closeModal()">&times;</button>
           </div>
           <div class="modal-body">
-            <form id="editProductForm" onsubmit="updateProduct(event, '${p.id}')">
+            <form id="editProductForm"
+                  onsubmit="updateProduct(event, '${p.id}')">
 
               <div class="form-row">
                 <div class="form-group">
                   <label>SKU *</label>
-                  <input type="text" class="form-control" name="sku" required value="${p.sku}">
+                  <input type="text" class="form-control" name="sku"
+                         required value="${p.sku}">
                 </div>
                 <div class="form-group">
                   <label>Product Name *</label>
-                  <input type="text" class="form-control" name="name" required value="${p.name}">
+                  <input type="text" class="form-control" name="name"
+                         required value="${p.name}">
                 </div>
               </div>
 
@@ -689,19 +1267,21 @@ async function editProduct(productId) {
                 <div class="form-group">
                   <label>Brand *</label>
                   <select class="form-control" name="brand" required>
-                    <option value="mercedes" ${p.brand === "mercedes" ? "selected" : ""}>Mercedes-Benz</option>
-                    <option value="bmw"      ${p.brand === "bmw"      ? "selected" : ""}>BMW</option>
+                    <option value="mercedes"
+                      ${p.brand === "mercedes" ? "selected" : ""}>
+                      Mercedes-Benz
+                    </option>
+                    <option value="bmw"
+                      ${p.brand === "bmw" ? "selected" : ""}>
+                      BMW
+                    </option>
                   </select>
                 </div>
                 <div class="form-group">
                   <label>Category *</label>
-                  <select class="form-control" name="category" required>
-                    <option value="brakes"     ${p.category === "brakes"     ? "selected" : ""}>Brakes</option>
-                    <option value="filters"    ${p.category === "filters"    ? "selected" : ""}>Filters</option>
-                    <option value="engine"     ${p.category === "engine"     ? "selected" : ""}>Engine</option>
-                    <option value="suspension" ${p.category === "suspension" ? "selected" : ""}>Suspension</option>
-                    <option value="electrical" ${p.category === "electrical" ? "selected" : ""}>Electrical</option>
-                    <option value="body"       ${p.category === "body"       ? "selected" : ""}>Body Parts</option>
+                  <select class="form-control" name="category_id" required>
+                    <option value="">Select Category</option>
+                    ${categoriesOptions}
                   </select>
                 </div>
               </div>
@@ -710,9 +1290,18 @@ async function editProduct(productId) {
                 <div class="form-group">
                   <label>Type</label>
                   <select class="form-control" name="type">
-                    <option value="genuine"     ${p.type === "genuine"     ? "selected" : ""}>Genuine</option>
-                    <option value="oem"         ${p.type === "oem"         ? "selected" : ""}>OEM</option>
-                    <option value="aftermarket" ${p.type === "aftermarket" ? "selected" : ""}>Aftermarket</option>
+                    <option value="genuine"
+                      ${p.type === "genuine" ? "selected" : ""}>
+                      Genuine
+                    </option>
+                    <option value="oem"
+                      ${p.type === "oem" ? "selected" : ""}>
+                      OEM
+                    </option>
+                    <option value="aftermarket"
+                      ${p.type === "aftermarket" ? "selected" : ""}>
+                      Aftermarket
+                    </option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -743,10 +1332,62 @@ async function editProduct(productId) {
                 </div>
                 <div class="form-group">
                   <label>Min Stock *</label>
-                  <input type="number" class="form-control" name="minStock"
+                  <input type="number" class="form-control" name="min_stock"
                          required min="1" value="${p.min_stock}">
                 </div>
               </div>
+
+              <!-- ── Vehicle Compatibility ──────────────── -->
+              <div class="form-section-label">
+                <i class="fas fa-car"></i> Vehicle Compatibility
+                <small style="color:#999;font-weight:400;">
+                  (leave blank if part fits all)
+                </small>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Model Type</label>
+                  <input type="text" class="form-control" name="model_type"
+                         placeholder="e.g. E200, E350, 320i, X5"
+                         value="${p.model_type || ""}">
+                </div>
+                <div class="form-group">
+                  <label>Engine Type</label>
+                  <select class="form-control" name="engine_type">
+                    <option value=""
+                      ${!p.engine_type ? "selected" : ""}>
+                      Petrol & Diesel (both)
+                    </option>
+                    <option value="petrol"
+                      ${p.engine_type === "petrol" ? "selected" : ""}>
+                      Petrol only
+                    </option>
+                    <option value="diesel"
+                      ${p.engine_type === "diesel" ? "selected" : ""}>
+                      Diesel only
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Compatible From (Year)</label>
+                  <input type="number" class="form-control" name="year_min"
+                         min="1980" max="2026"
+                         value="${p.year_min || ""}"
+                         placeholder="e.g. 2015">
+                </div>
+                <div class="form-group">
+                  <label>Compatible To (Year)</label>
+                  <input type="number" class="form-control" name="year_max"
+                         min="1980" max="2026"
+                         value="${p.year_max || ""}"
+                         placeholder="e.g. 2022">
+                </div>
+              </div>
+              <!-- ── End Vehicle Compatibility ─────────── -->
 
               <div class="form-group">
                 <label>Description</label>
@@ -767,7 +1408,7 @@ async function editProduct(productId) {
                 </div>
               </div>
 
-              <!-- ── Image Management Section ──────────────── -->
+              <!-- ── Image Management Section (unchanged) ── -->
               <div class="form-group" style="margin-top:1.5rem;">
                 <label>
                   Product Images
@@ -776,12 +1417,10 @@ async function editProduct(productId) {
                   </small>
                 </label>
 
-                <!-- Existing saved images -->
                 <div class="image-preview-grid" id="existingImagesGrid">
                   ${existingImagesHTML}
                 </div>
 
-                <!-- Only show upload zone if under the 6 image limit -->
                 ${(!p.images || p.images.length < 6) ? `
                   <div class="image-drop-zone" id="editImageDropZone"
                        style="margin-top:1rem;"
@@ -792,7 +1431,8 @@ async function editProduct(productId) {
                     <i class="fas fa-cloud-upload-alt"
                        style="font-size:1.5rem;color:#ccc;"></i>
                     <p style="margin:0.5rem 0 0;color:#999;font-size:0.85rem;">
-                      Add more images — drag & drop or <strong>click to browse</strong>
+                      Add more images — drag & drop or
+                      <strong>click to browse</strong>
                     </p>
                   </div>
                   <input type="file" id="editImageInput"
@@ -810,10 +1450,10 @@ async function editProduct(productId) {
               <!-- ── End Image Management Section ─────────── -->
 
               <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal()">
-                  Cancel
-                </button>
-                <button type="submit" class="btn-primary" id="editProductSubmitBtn">
+                <button type="button" class="btn-secondary"
+                        onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-primary"
+                        id="editProductSubmitBtn">
                   <i class="fas fa-save"></i> Update Product
                 </button>
               </div>
@@ -891,31 +1531,40 @@ async function updateProduct(event, productId) {
     sku:         formData.get("sku"),
     name:        formData.get("name"),
     brand:       formData.get("brand"),
-    category:    formData.get("category"),
+    category_id: parseInt(formData.get("category_id")),
+    type:        formData.get("type"),
+    oem_number:  formData.get("oem_number")  || null,
     cost:        parseFloat(formData.get("cost")),
     price:       parseFloat(formData.get("price")),
     stock:       parseInt(formData.get("stock")),
-    min_stock:   parseInt(formData.get("minStock")),
-    description: formData.get("description"),
-    supplier:    formData.get("supplier"),
-    location:    formData.get("location"),
+    min_stock:   parseInt(formData.get("min_stock")),
+    description: formData.get("description") || null,
+    supplier:    formData.get("supplier")    || null,
+    location:    formData.get("location")    || null,
+
+    // ── Vehicle compatibility fields ───────────────────────
+    model_type:  formData.get("model_type")  || null,
+    engine_type: formData.get("engine_type") || null,
+    year_min:    formData.get("year_min")
+                 ? parseInt(formData.get("year_min")) : null,
+    year_max:    formData.get("year_max")
+                 ? parseInt(formData.get("year_max")) : null,
   };
 
-  // ── Disable submit button ──────────────────────────────────
-  const submitBtn      = document.getElementById("editProductSubmitBtn");
-  const originalText   = submitBtn.innerHTML;
-  submitBtn.disabled   = true;
-  submitBtn.innerHTML  = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+  const submitBtn    = document.getElementById("editProductSubmitBtn");
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled  = true;
+  submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
 
   try {
-    // ── Save product details first ─────────────────────────
     await api.updateProduct(productId, payload);
 
     // ── Upload any newly staged images ─────────────────────
     const stagedCount = (stagedFiles[productId] || []).length;
 
     if (stagedCount > 0) {
-      submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Uploading images...`;
+      submitBtn.innerHTML =
+        `<i class="fas fa-spinner fa-spin"></i> Uploading images...`;
       const uploadedCount = await uploadStagedImages(productId, productId);
 
       if (uploadedCount < stagedCount) {
@@ -1371,6 +2020,16 @@ style.textContent = `
     white-space: nowrap;
     overflow: hidden;
   }
+  .form-section-label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--primary-red);
+    padding-bottom: 0.4rem;
+    margin: 1.5rem 0 1rem;
+  }
   .remove-preview-btn {
     position: absolute;
     top: 2px;
@@ -1389,5 +2048,35 @@ style.textContent = `
     line-height: 1;
   }
   .remove-preview-btn:hover { background: #c40000; }
+
+  .category-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #f0f0f0;
+    color: #555;
+    border: 1px solid #ddd;
+    white-space: nowrap;
+  }
+
+  /* ── Category table ─────────────────────────────── */
+  .categories-content .admin-table code {
+    background: #f5f5f5;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .btn-icon:disabled {
+    opacity: 0.3;
+    cursor: not-allowed !important;
+  }
+
+  .btn-icon:disabled:hover {
+    transform: none;
+  }
 `;
 document.head.appendChild(style);

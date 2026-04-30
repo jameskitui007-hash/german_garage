@@ -147,6 +147,7 @@ const api = {
   updateProduct: (id, body)    => api.put(`/api/products/${id}`, body),
   deleteProduct: (id)          => api.delete(`/api/products/${id}`),
 
+ 
 
 // ── Uploads ─────────────────────────────────────────────────
   
@@ -221,6 +222,19 @@ const api = {
   createSupplier:(body)        => api.post("/api/suppliers", body),
   updateSupplier:(id, body)    => api.put(`/api/suppliers/${id}`, body),
   deleteSupplier:(id)          => api.delete(`/api/suppliers/${id}`),
+
+// ── Categories ──────────────────────────────────────────────
+  getCategories:    () => api.get("/api/categories"),
+  getCategory:      (id) => api.get(`/api/categories/${id}`),
+  createCategory:   (body) => api.post("/api/categories", body),
+  updateCategory:   (id, body) => api.put(`/api/categories/${id}`, body),
+  deleteCategory:   (id) => api.delete(`/api/categories/${id}`),
+
+  // ── Shop (public) ────────────────────────────────────────────
+  getShopProducts:  (params = "") => api.get(`/api/shop/products${params}`),
+  getShopProduct:   (id) => api.get(`/api/shop/products/${id}`),
+  getShopCategories: () => api.get("/api/shop/categories"),
+  getShopFilters:   (params = "") => api.get(`/api/shop/filters${params}`),
 
   // ── Settings ────────────────────────────────────────────────
   getSettings:    (group = "") => api.get(`/api/settings${group ? `?group=${group}` : ""}`),
