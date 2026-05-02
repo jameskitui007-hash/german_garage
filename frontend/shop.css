@@ -3,16 +3,17 @@
    =================================== */
 /* Replace .shop-container */
 .shop-container {
-  display:grid;
-  grid-template-columns: 320px minmax(0,1fr); 
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 2rem;
   margin: 3rem auto;
 }
 
-/* Replace .shop-sidebar */
 .shop-sidebar {
-  min-width: 0px;
-  min-height: 0px;
+  flex: 0 0 280px;
+  min-width: 280px;
+  min-height: 400px;
   background: var(--bg-light);
   padding: 2rem;
   height: fit-content;
@@ -69,6 +70,7 @@
 .price-range {
   width: 100%;
   height: 6px;
+  appearance: none;
   -webkit-appearance: none;
   background: #ddd;
   border-radius: 3px;
@@ -765,7 +767,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .shop-container {
-    grid-template-column: 1fr;
+    grid-template-columns: 1fr;
   }
   
   .shop-sidebar {
