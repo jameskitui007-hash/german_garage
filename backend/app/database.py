@@ -2,20 +2,29 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-
 import os
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Check which environment we're in (Railway or Local)
+if os.getenv("MYSQLHOST"):
+    # Railway environment - use Railway's MySQL variables
+    DB_USER = os.getenv("MYSQLUSER")
+    DB_PASSWORD = os.getenv("MYSQLPASSWORD")
+    DB_HOST = os.getenv("MYSQLHOST")
+    DB_PORT = os.getenv("MYSQLPORT")
+    DB_NAME = os.getenv("MYSQLDATABASE") or os.getenv("MYSQL_DATABASE")
+else:
+    # Local development - use your .env file variables
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PORT = os.getenv("DB_PORT")
+    DB_NAME = os.getenv("DB_NAME")
+
 # Build the MySQL connection URL
 # Format: mysql+pymysql://user:password@host:port/database
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # Create the SQLAlchemy engine
@@ -23,7 +32,7 @@ DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    echo=True  # Set to False in production — logs all SQL queries
+    echo=False  # Set to False in production to reduce log noise
 )
 
 # Session factory — each request gets its own session
