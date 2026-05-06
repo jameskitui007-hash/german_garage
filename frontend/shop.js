@@ -1,7 +1,7 @@
 // ===================================
 // SHOP CONFIGURATION
 // ===================================
-const API_BASE    = "http://127.0.0.1:8000";
+const API_BASE    = "https://germangarage-production.up.railway.app";
 const WHATSAPP_NUM = "254XXXXXXXXX"; // ← replace with your number
 
 // ===================================
