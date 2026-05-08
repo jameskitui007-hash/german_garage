@@ -21,7 +21,7 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import distinct
-from typing import Optional
+from typing import Any,Optional, List
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -51,7 +51,7 @@ class ShopProductResponse(BaseModel):
     price:       float
     stock:       int
     min_stock:   int
-    images: Optional[list[str]] = None  # ← ADD THIS
+    images:      Optional[list[Any]] = None  # ← ADD THIS
     description: Optional[str]         = None
     model_type:  Optional[str]         = None
     year_min:    Optional[int]         = None

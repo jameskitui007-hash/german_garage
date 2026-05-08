@@ -1,14 +1,15 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request,request, Response,status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from contextlib import asynccontextmanager
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from fastapi.staticfiles import StaticFiles
 
 
 # ── Config — validated on import, app refuses to start if SECRET_KEY is weak ──
@@ -104,11 +105,16 @@ app.add_middleware(
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent  # resolves to backend/
 
-app.mount(
-    "/uploads",
-    StaticFiles(directory=str(BASE_DIR / "uploads")),
-    name="uploads"
-)
+# ── Static Files — local dev only ────────────────────────────
+# In production, images are served from Cloudinary
+if not settings.is_production:
+    from fastapi.staticfiles import StaticFiles
+    
+    app.mount(
+        "/uploads",
+        StaticFiles(directory=str(BASE_DIR / "uploads")),
+        name="uploads"
+    )
 
 
 # ── Routers ───────────────────────────────────────────────────────────────────

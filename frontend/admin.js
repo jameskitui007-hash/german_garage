@@ -850,6 +850,12 @@ function renderInventoryTable(res) {
                   title="Delete Product">
             <i class="fas fa-trash"></i>
           </button>
+          <button class="btn-icon" 
+              onclick="copyProductUrl('${p.id}')"
+              title="Copy product URL"
+              style="background:#667eea;color:white;">
+            <i class="fas fa-link"></i>
+          </button>
         </div>
       </td>
     </tr>`).join("");
@@ -1225,16 +1231,23 @@ async function editProduct(productId) {
 
     // ── Build existing images HTML ──────────────────────────
     const existingImagesHTML = (p.images && p.images.length > 0)
-      ? p.images.map(filename => `
-          <div class="image-preview-item" id="existing-${filename}">
-            <img src="${api.getImageUrl(filename)}" alt="Product image">
-            <button type="button" class="remove-preview-btn"
-                    onclick="deleteExistingImage('${p.id}', '${filename}')"
-                    title="Delete image">
-              &times;
-            </button>
-            <div class="preview-filename">saved</div>
-          </div>`).join("")
+      ? p.images.map( image,index => {
+          const imageUrl = typeof image === "object"
+            ? image.url
+            : image.startsWith("http")
+              ? image 
+              : api.getImageUrl(image);
+          return `
+            <div class="image-preview-item" id="existing-img-${index}">
+              <img src="${imageUrl}" alt="Product image">
+              <button type="button" class="remove-preview-btn"
+                      onclick="deleteExistingImage('${p.id}', '${index}')"
+                      title="Delete image">
+                &times;
+              </button>
+              <div class="preview-filename">saved</div>
+            </div>`}).
+          join("")
       : `<p style="color:#999;font-size:0.85rem;margin:0;">
            No images yet
          </p>`;
@@ -1472,14 +1485,14 @@ async function editProduct(productId) {
  * Delete an already-saved image from an existing product.
  * Called from the edit modal's × button on saved image thumbnails.
  */
-async function deleteExistingImage(productId, filename) {
+async function deleteExistingImage(productId, imageIndex) {
   if (!confirm("Delete this image? This cannot be undone.")) return;
 
   try {
-    await api.deleteProductImage(productId, filename);
+    await api.deleteProductImage(productId, imageIndex);
 
     // Remove the thumbnail from the DOM without closing the modal
-    const thumb = document.getElementById(`existing-${filename}`);
+    const thumb = document.getElementById(`existing-img-${imageIndex}`);
     if (thumb) thumb.remove();
 
     showNotification("Image deleted successfully!", "success");
@@ -1603,6 +1616,13 @@ async function deleteProduct(productId) {
   } catch (err) {
     showNotification(err.message || "Delete failed", "error");
   }
+}
+
+function copyProductUrl(productId) {
+  const url = `https://germangarage.netlify.app/product.html?id=${productId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showNotification("Product URL copied!", "success");
+  });
 }
 
 // ===================================

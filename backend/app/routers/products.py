@@ -34,6 +34,7 @@ from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse
 from app.schemas.category import CategoryResponse
 from app.dependencies import get_current_admin
 from app.utils.logger import log_activity
+from app.utils.cloudinary import delete_image
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -408,15 +409,19 @@ def delete_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
     # ── Clean up images from disk before deleting the record ──
-    if product.images:
-        for filename in product.images:
-            file_path = UPLOAD_DIR / filename
-            if file_path.exists():
-                try:
-                    file_path.unlink()
-                except Exception as e:
-                    # Log but don't block the delete if file removal fails
-                    print(f"Warning: could not delete image {filename}: {e}")
+        if product.images:
+            for image in product.images:
+                    try:
+                        if isinstance(image, dict) and image.get("public_id"):
+                            # Cloudinary image
+                            delete_image(image["public_id"])
+                        elif isinstance(image, str):
+                            # Local file
+                            file_path = UPLOAD_DIR / image
+                            if file_path.exists():
+                                file_path.unlink()
+                    except Exception as e:
+                        print(f"Error deleting image {image} for product {product.sku}: {e}")
 
     name = product.name
     sku  = product.sku

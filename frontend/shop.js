@@ -2,7 +2,17 @@
 // SHOP CONFIGURATION
 // ===================================
 const API_BASE    = "https://germangarage-production.up.railway.app";
-const WHATSAPP_NUM = "254XXXXXXXXX"; // ← replace with your number
+const WHATSAPP_NUM = "254723666633"; // ← replace with your number
+
+// ===================================
+// IMAGE HELPERS
+// ===================================
+function getImageUrl(image) {
+  if (!image) return null;
+  if (typeof image === "object" && image.url) return image.url;
+  if (typeof image === "string" && image.startsWith("http")) return image;
+  return `${API_BASE}/uploads/products/${image}`;
+}
 
 // ===================================
 // STATE
@@ -472,9 +482,10 @@ function createProductCard(product) {
 
   // Image — real photo or emoji fallback
   const hasImage  = product.images && product.images.length > 0;
+  const imageUrl  = hasImage ? getImageUrl(product.images[0]) : null;
   const imageHTML = hasImage
     ? `<img
-         src="${API_BASE}/uploads/products/${product.images[0]}"
+         src="${imageUrl}"
          alt="${product.name}"
          class="product-card-img"
          onerror="this.style.display='none';
@@ -534,7 +545,7 @@ function createProductCard(product) {
 
     <div class="product-actions">
       <button class="quick-view-btn"
-              onclick="quickView('${product.id}')">
+              onclick="window.location.href='product.html?id=${product.id}'">
         Quick View
       </button>
       <button class="add-to-cart-btn"
@@ -565,20 +576,21 @@ function quickView(productId) {
     ? `<div class="product-gallery">
          <div class="gallery-main">
            <img id="galleryMainImg"
-                src="${API_BASE}/uploads/products/${product.images[0]}"
+                src="${getImageUrl(product.images[0])}"
                 alt="${product.name}"
                 onerror="this.style.display='none'">
          </div>
          ${product.images.length > 1
            ? `<div class="gallery-thumbs">
-                ${product.images.map((filename, index) => `
-                  <img src="${API_BASE}/uploads/products/${filename}"
+                ${product.images.map((image, index) => {
+                  const imageUrl = getImageUrl(image);
+                  return `
+                  <img src="${imageUrl}"
                        alt="View ${index + 1}"
                        class="gallery-thumb ${index === 0 ? "thumb-active" : ""}"
-                       onclick="switchGalleryImage(
-                         '${API_BASE}/uploads/products/${filename}', this)"
+                       onclick="switchGalleryImage('${imageUrl}', this)"
                        onerror="this.style.display='none'">
-                `).join("")}
+                `}).join("")}
               </div>`
            : ""}
        </div>`
@@ -791,20 +803,9 @@ function toggleCart() {
 
 function proceedToCheckout() {
   if (cart.length === 0) { alert("Your cart is empty"); return; }
-
-  const total    = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const shipping = total > 15000 ? 0 : 500;
-  const grand    = total + shipping;
-
-  const message  = `ORDER REQUEST%0A%0AItems:%0A${
-    cart.map(i =>
-      `• ${i.name} x${i.quantity} - KES ${i.price.toLocaleString()}`
-    ).join("%0A")
-  }%0A%0ASubtotal: KES ${total.toLocaleString()}%0AShipping: ${
-    shipping === 0 ? "FREE" : `KES ${shipping.toLocaleString()}`
-  }%0ATotal: KES ${grand.toLocaleString()}%0A%0APlease contact me to complete this order.`;
-
-  window.open(`https://wa.me/${WHATSAPP_NUM}?text=${message}`, "_blank");
+  // Save cart to sessionStorage so checkout page can read it
+  sessionStorage.setItem("pendingCart", JSON.stringify(cart));
+  window.location.href = "checkout.html";
 }
 
 // ===================================

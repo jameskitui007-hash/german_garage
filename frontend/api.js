@@ -191,7 +191,7 @@ const api = {
    * @param {string} productId - the product's id
    * @param {string} filename - the filename to delete e.g. "abc123.jpg"
    */
-  deleteProductImage: (productId, filename) =>
+  deleteProductImage: (productId, imageIndex) =>
     api.delete(`/api/uploads/product/${productId}/${filename}`),
 
   /**
@@ -199,8 +199,17 @@ const api = {
    * @param {string} filename
    * @returns {string} full URL
    */
-  getImageUrl: (filename) => `${API_BASE}/uploads/products/${filename}`,
+  
 
+  getImageUrl: (image) => {
+    if (!image) return null;
+    // Cloudinary format — already a full URL
+    if (typeof image === "object" && image.url) return image.url;
+    // Full URL string (Cloudinary migrated)
+    if (typeof image === "string" && image.startsWith("http")) return image;
+    // Legacy local filename
+    return `${API_BASE}/uploads/products/${image}`;
+  },
 
 
   // ── Orders ──────────────────────────────────────────────────

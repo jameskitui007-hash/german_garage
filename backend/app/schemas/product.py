@@ -1,6 +1,6 @@
 import re
 from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 from app.utils.sanitize import strip_html
 from app.schemas.category import CategoryResponse
@@ -36,7 +36,7 @@ class ProductCreate(BaseModel):
     description: Optional[str]       = None
     supplier:    Optional[str]       = None
     location:    Optional[str]       = None
-    images:      Optional[List[str]] = None
+    images:      Optional[List[Any]] = None
 
     # ── New filter fields ──────────────────────────────────────
     model_type:  Optional[str]       = None   # e.g. "E200", "320i", "X5"
@@ -215,7 +215,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str]       = None
     supplier:    Optional[str]       = None
     location:    Optional[str]       = None
-    images:      Optional[List[str]] = None
+    images:      Optional[List[Any]] = None
     model_type:  Optional[str]       = None
     year_min:    Optional[int]       = None
     year_max:    Optional[int]       = None
@@ -343,7 +343,7 @@ class ProductResponse(BaseModel):
     description: Optional[str]             = None
     supplier:    Optional[str]             = None
     location:    Optional[str]             = None
-    images:      Optional[List[str]]       = None
+    images:      Optional[List[Any]]       = None
     model_type:  Optional[str]             = None
     year_min:    Optional[int]             = None
     year_max:    Optional[int]             = None
