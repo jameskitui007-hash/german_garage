@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # ── App ───────────────────────────────────────────────────
     FRONTEND_URL: str                   = "http://127.0.0.1:5500"
     ENV: str                            = "development"   # "development" | "production"
+    
+    # ── Cloudinary ────────────────────────────────────────────────
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY:    str = ""
+    CLOUDINARY_API_SECRET: str = ""
 
     # ── Brute-force ───────────────────────────────────────────
     MAX_FAILED_LOGIN_ATTEMPTS: int      = 5

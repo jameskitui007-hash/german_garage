@@ -85,14 +85,23 @@ def get_orders(
         "orders":      [OrderResponse.from_orm(o) for o in orders]
     }
 
-
+# ── GET single order PUBLIC (for confirmation page) ───────────
+@router.get("/confirm/{order_number}")
+def get_order_public(order_number: str, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(
+        Order.order_number == order_number
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return OrderResponse.from_orm(order)
+    
 # ── GET single order ──────────────────────────────────────────
 @router.get("/{order_number}", response_model=OrderResponse)
 def get_order(order_number: str, db: Session = Depends(get_db), admin = Depends(get_current_admin)):
     order = db.query(Order).filter(Order.order_number == order_number).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    return order
+    return OrderResponse.from_orm(order)
 
 
 # ── POST create order (public — from shop frontend) ───────────
