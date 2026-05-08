@@ -169,7 +169,8 @@ def get_products(
     page:        int = Query(1, ge=1),
     per_page:    int = Query(10, ge=1, le=100),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin = Depends(get_current_admin)
 ):
     """
     Returns paginated products with optional filters.
@@ -252,7 +253,8 @@ def get_products(
 @router.get("/{product_id}", response_model=ProductResponse)
 def get_product(
     product_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin = Depends(get_current_admin)
 ):
     """Returns a single product by ID including nested category. Public."""
     p = db.query(Product).options(
