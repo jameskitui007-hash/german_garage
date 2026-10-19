@@ -1,32 +1,33 @@
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, create_engine
 from alembic import context
 from dotenv import load_dotenv
 import os
 
-# Load .env so we can read DB credentials
 load_dotenv()
 
-# Alembic Config object
 config = context.config
 
-# Set the DB URL dynamically from .env
-DB_USER     = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST     = os.getenv("DB_HOST")
-DB_PORT     = os.getenv("DB_PORT")
-DB_NAME     = os.getenv("DB_NAME")
+# ── Use DATABASE_URL directly ─────────────────────────────────
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-config.set_main_option(
-    "sqlalchemy.url",
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+if not DATABASE_URL:
+    # Fallback to individual variables
+    DB_USER     = os.getenv("MYSQLUSER")     or os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD")
+    DB_HOST     = os.getenv("MYSQLHOST")     or os.getenv("DB_HOST")
+    DB_PORT     = os.getenv("MYSQLPORT")     or os.getenv("DB_PORT")
+    DB_NAME     = os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME")
+    DATABASE_URL = (
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}"
+        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
-# Setup loggers
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import all models so Alembic can detect them
 from app.database import Base
 from app.models import (
     Product, Order, OrderItem,
@@ -34,7 +35,6 @@ from app.models import (
     ActivityLog, Setting
 )
 
-# This is the metadata Alembic will compare against the DB
 target_metadata = Base.metadata
 
 
@@ -51,10 +51,10 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_engine(
+        DATABASE_URL,
         poolclass=pool.NullPool,
+        connect_args={"ssl": {"verify_cert": False}}
     )
     with connectable.connect() as connection:
         context.configure(

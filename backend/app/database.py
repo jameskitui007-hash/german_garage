@@ -4,44 +4,33 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Check which environment we're in (Railway or Local)
-if os.getenv("MYSQLHOST"):
-    # Railway environment - use Railway's MySQL variables
-    DB_USER = os.getenv("MYSQLUSER")
-    DB_PASSWORD = os.getenv("MYSQLPASSWORD")
-    DB_HOST = os.getenv("MYSQLHOST")
-    DB_PORT = os.getenv("MYSQLPORT")
-    DB_NAME = os.getenv("MYSQLDATABASE") or os.getenv("MYSQL_DATABASE")
-else:
-    # Local development - use your .env file variables
-    DB_USER = os.getenv("DB_USER")
-    DB_PASSWORD = os.getenv("DB_PASSWORD")
-    DB_HOST = os.getenv("DB_HOST")
-    DB_PORT = os.getenv("DB_PORT")
-    DB_NAME = os.getenv("DB_NAME")
+# Use DATABASE_URL directly if set (Azure, Railway, local .env)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Build the MySQL connection URL
-# Format: mysql+pymysql://user:password@host:port/database
-DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+if not DATABASE_URL:
+    # Fallback: build from individual variables (Railway legacy)
+    DB_USER     = os.getenv("MYSQLUSER")     or os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD")
+    DB_HOST     = os.getenv("MYSQLHOST")     or os.getenv("DB_HOST")
+    DB_PORT     = os.getenv("MYSQLPORT")     or os.getenv("DB_PORT")
+    DB_NAME     = os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME")
+    DATABASE_URL = (
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}"
+        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
-# Create the SQLAlchemy engine
-# pool_pre_ping=True checks connection health before using it
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    echo=False  # Set to False in production to reduce log noise
+    echo=False,
+    connect_args={"ssl": {"verify_cert": False}}
 )
 
-# Session factory — each request gets its own session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Base class all models will inherit from
 Base = declarative_base()
 
-# Dependency — used in routers to get a DB session per request
 def get_db():
     db = SessionLocal()
     try:

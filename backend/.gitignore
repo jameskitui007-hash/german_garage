@@ -1,5 +1,7 @@
 # Environment
 .env
+.env.local.backup
+.env.railway
 
 # Virtual environment
 venv/
