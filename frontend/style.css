@@ -71,6 +71,7 @@ header {
   justify-content: space-between;
   align-items: center;
   gap: 2rem;
+  width: 100%;
 }
 
 .logo h1 {
@@ -589,7 +590,7 @@ footer {
 /* ===================================
    RESPONSIVE DESIGN
    =================================== */
-@media (max-width: 1px) {
+@media (max-width: 1024px) {
   .header-container {
     flex-wrap: wrap;
   }

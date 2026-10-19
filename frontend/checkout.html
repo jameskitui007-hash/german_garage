@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | Mercedes & BMW Parts</title>
+  <meta name="description" content="Complete your Mercedes & BMW parts order securely. Checkout now for fast delivery in Nairobi.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://yourwebsite.com/checkout.html">
+  <meta property="og:title" content="Checkout | Mercedes & BMW Parts">
+  <meta property="og:description" content="Complete your Mercedes & BMW parts order securely. Checkout now for fast delivery in Nairobi.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yourwebsite.com/checkout.html">
+  <meta property="og:image" content="https://yourwebsite.com/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Checkout | Mercedes & BMW Parts">
+  <meta name="twitter:description" content="Complete your Mercedes & BMW parts order securely. Checkout now for fast delivery in Nairobi.">
+  <meta name="twitter:image" content="https://yourwebsite.com/og-image.jpg">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="shop.css">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    .checkout-container {
+      max-width: 1100px;
+      margin: 3rem auto;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 2rem;
+    }
+    .checkout-card {
+      background: white;
+      padding: 2rem;
+      border: 1px solid #e0e0e0;
+    }
+    .checkout-card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--primary-red);
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 0.95rem;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary-red);
+    }
+    .order-summary-items {
+      margin-bottom: 1.5rem;
+    }
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.9rem;
+    }
+    .summary-item-name {
+      flex: 1;
+      padding-right: 1rem;
+    }
+    .summary-totals {
+      margin-top: 1rem;
+    }
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .summary-line.grand-total {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #000;
+      border-top: 2px solid #000;
+      padding-top: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .mpesa-box {
+      background: #f0faf0;
+      border: 1px solid #4caf50;
+      border-radius: 4px;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .mpesa-box h4 {
+      color: #2e7d32;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+    }
+    .mpesa-detail {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      padding: 0.3rem 0;
+    }
+    .mpesa-detail strong {
+      color: #1b5e20;
+      font-size: 1rem;
+    }
+    .place-order-btn {
+      width: 100%;
+      padding: 1rem;
+      background: var(--primary-red);
+      color: white;
+      border: none;
+      font-family: 'Oswald', sans-serif;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 1rem;
+    }
+    .place-order-btn:hover { background: #a30000; }
+    .place-order-btn:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+    .delivery-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .delivery-option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .delivery-option:hover,
+    .delivery-option.selected {
+      border-color: var(--primary-red);
+      background: #fff5f5;
+    }
+    .delivery-option input[type="radio"] {
+      width: auto;
+      accent-color: var(--primary-red);
+    }
+    .delivery-label {
+      flex: 1;
+    }
+    .delivery-price {
+      font-weight: 600;
+      color: var(--primary-red);
+    }
+    .empty-cart-msg {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #999;
+    }
+    @media (max-width: 768px) {
+      .checkout-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-container">
+    <div class="logo">
+      <h1>MERCEDES & BMW SPECIALISTS</h1>
+      <p class="tagline">Nairobi</p>
+    </div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="parts-shop.html">Parts Shop</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" style="padding:3rem 2rem;">
+  <div class="hero-content">
+    <h2 class="hero-title">Checkout</h2>
+    <p class="hero-subtitle">Complete your order</p>
+  </div>
+</section>
+
+<div class="checkout-container" id="checkoutContainer">
+  <!-- Populated by checkout.js -->
+  <div class="empty-cart-msg">
+    <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
+    <p style="margin-top:1rem;">Loading your cart...</p>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-bottom">
+    <p>&copy; 2026 Mercedes & BMW Specialist Garage Nairobi. All rights reserved.</p>
+  </div>
+</footer>
+
+<script>
+  const API_BASE = "https://germangarage-production.up.railway.app";
+  const WHATSAPP_NUM = "254723666633"; // ← replace with real number
+  const PAYBILL     = "422566";
+  const ACCOUNT_NO  = "*******";       // ← replace with real account number
+</script>
+<script src="checkout.js"></script>
+</body>
+</html>
+"https://germangarage-production.up.railway.app";

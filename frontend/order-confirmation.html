@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmed | Mercedes & BMW Parts</title>
+  <meta name="description" content="Your Mercedes & BMW parts order is confirmed. Thank you for shopping with us — delivery updates will be sent shortly.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://yourwebsite.com/order-confirmation.html">
+  <meta property="og:title" content="Order Confirmed | Mercedes & BMW Parts">
+  <meta property="og:description" content="Your Mercedes & BMW parts order is confirmed. Thank you for shopping with us — delivery updates will be sent shortly.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yourwebsite.com/order-confirmation.html">
+  <meta property="og:image" content="https://yourwebsite.com/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Order Confirmed | Mercedes & BMW Parts">
+  <meta name="twitter:description" content="Your Mercedes & BMW parts order is confirmed. Thank you for shopping with us — delivery updates will be sent shortly.">
+  <meta name="twitter:image" content="https://yourwebsite.com/og-image.jpg">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    .confirmation-container {
+      max-width: 700px;
+      margin: 3rem auto;
+      padding: 0 2rem;
+    }
+    .confirmation-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      padding: 2.5rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .success-icon {
+      font-size: 4rem;
+      color: #4caf50;
+      margin-bottom: 1rem;
+    }
+    .order-number {
+      font-family: 'Oswald', sans-serif;
+      font-size: 1.5rem;
+      color: var(--primary-red);
+      margin: 0.5rem 0;
+    }
+    .steps-list {
+      text-align: left;
+      margin: 1.5rem 0;
+      padding: 0;
+      list-style: none;
+    }
+    .steps-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.95rem;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      background: var(--primary-red);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .mpesa-box {
+      background: #f0faf0;
+      border: 1px solid #4caf50;
+      border-radius: 4px;
+      padding: 1.5rem;
+      text-align: left;
+      margin: 1rem 0;
+    }
+    .mpesa-detail {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      font-size: 0.95rem;
+    }
+    .mpesa-detail strong {
+      color: #1b5e20;
+      font-size: 1.1rem;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+    .btn-whatsapp {
+      padding: 0.9rem 2rem;
+      background: #25D366;
+      color: white;
+      border: none;
+      font-family: 'Oswald', sans-serif;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-continue {
+      padding: 0.9rem 2rem;
+      background: var(--primary-black);
+      color: white;
+      border: none;
+      font-family: 'Oswald', sans-serif;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+        @media (max-width: 600px) {
+    .confirmation-container {
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .confirmation-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .success-icon {
+        font-size: 3rem;
+    }
+
+    .order-number {
+        font-size: 1.25rem;
+        overflow-wrap: anywhere;
+    }
+
+    .mpesa-box {
+        padding: 1rem;
+    }
+
+    .mpesa-detail {
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .btn-whatsapp,
+    .btn-continue {
+        width: 100%;
+        justify-content: center;
+        padding: 0.9rem 1rem;
+        text-align: center;
+    }
+    }
+
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-container">
+    <div class="logo">
+      <h1>MERCEDES & BMW SPECIALISTS</h1>
+      <p class="tagline">Nairobi</p>
+    </div>
+  </div>
+</header>
+
+<div class="confirmation-container">
+
+  <div class="confirmation-card">
+    <div class="success-icon">
+      <i class="fas fa-check-circle"></i>
+    </div>
+    <h2>Order Placed Successfully!</h2>
+    <p class="order-number" id="orderNumber">Loading...</p>
+    <p style="color:#666;margin-top:0.5rem;">
+      We've received your order and will confirm shortly.
+    </p>
+  </div>
+
+  <div class="confirmation-card" style="text-align:left;">
+    <h3 style="margin-bottom:1rem;">
+      <i class="fas fa-mobile-alt" style="color:#4caf50;"></i>
+      Complete Payment via M-Pesa
+    </h3>
+
+    <div class="mpesa-box">
+      <h4 style="color:#2e7d32;margin-bottom:0.75rem;">
+        📱 Lipa na M-Pesa — Paybill
+      </h4>
+      <div class="mpesa-detail">
+        <span>Paybill Number:</span>
+        <strong id="mpesaPaybill">422566</strong>
+      </div>
+      <div class="mpesa-detail">
+        <span>Account Number:</span>
+        <strong id="mpesaAccount">*******</strong>
+      </div>
+      <div class="mpesa-detail">
+        <span>Amount:</span>
+        <strong id="mpesaAmount">KES —</strong>
+      </div>
+      <div class="mpesa-detail">
+        <span>Reference:</span>
+        <strong id="mpesaRef">Your order number</strong>
+      </div>
+    </div>
+
+    <ol class="steps-list">
+      <li>
+        <span class="step-num">1</span>
+        <span>Go to M-Pesa on your phone → <strong>Lipa na M-Pesa → Pay Bill</strong></span>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <span>Enter Business No: <strong>422566</strong></span>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <span>Enter Account No: <strong id="accountStep">*******</strong></span>
+      </li>
+      <li>
+        <span class="step-num">4</span>
+        <span>Enter Amount and confirm with your M-Pesa PIN</span>
+      </li>
+      <li>
+        <span class="step-num">5</span>
+        <span>Send us the M-Pesa confirmation SMS via WhatsApp</span>
+      </li>
+    </ol>
+  </div>
+
+  <div class="confirmation-card">
+    <h3 style="margin-bottom:1rem;">What Happens Next?</h3>
+    <p style="color:#666;font-size:0.95rem;line-height:1.7;">
+      Once we receive your M-Pesa payment confirmation, we'll
+      process your order and contact you with pickup/delivery details.
+      Questions? Chat with us on WhatsApp.
+    </p>
+
+    <div class="action-buttons">
+      <a id="whatsappBtn"
+         href="https://wa.me/254723666633"
+         class="btn-whatsapp"
+         target="_blank">
+        <i class="fab fa-whatsapp"></i> Send Payment Confirmation
+      </a>
+      <a href="parts-shop.html" class="btn-continue">
+        <i class="fas fa-arrow-left"></i> Continue Shopping
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-bottom">
+    <p>&copy; 2026 Mercedes & BMW Specialist Garage Nairobi.</p>
+  </div>
+</footer>
+
+<script>
+  const API_BASE     = "https://germangarage-production.up.railway.app";
+  const WHATSAPP_NUM = "254723666633"; // ← replace
+  const PAYBILL      = "422566";
+  const ACCOUNT_NO   = "*******";      // ← replace
+
+  // Get order number from URL
+  const params      = new URLSearchParams(window.location.search);
+  const orderNumber = params.get("order");
+
+  if (!orderNumber) {
+    window.location.href = "parts-shop.html";
+  }
+
+  // Display order number
+  document.getElementById("orderNumber").textContent =
+    `Order #${orderNumber}`;
+  document.getElementById("mpesaRef").textContent = orderNumber;
+  document.getElementById("accountStep").textContent = ACCOUNT_NO;
+  document.getElementById("mpesaAccount").textContent = ACCOUNT_NO;
+
+  // Fetch order total from API
+  fetch(`${API_BASE}/api/orders/confirm/${orderNumber}`)
+    .then(r => r.json())
+    .then(order => {
+      document.getElementById("mpesaAmount").textContent =
+        `KES ${order.total.toLocaleString()}`;
+
+      // WhatsApp button with payment confirmation prompt
+      const msg =
+        `Hi! I've paid for order *${orderNumber}*%0A` +
+        `Amount: KES ${order.total.toLocaleString()}%0A` +
+        `Please confirm my order. Thank you!`;
+
+      document.getElementById("whatsappBtn").href =
+        `https://wa.me/${WHATSAPP_NUM}?text=${msg}`;
+    })
+    .catch(() => {
+      document.getElementById("mpesaAmount").textContent = "KES —";
+    });
+</script>
+</body>
+</html>

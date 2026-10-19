@@ -568,11 +568,17 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
+  .admin-nav {
+    display: block;
+    width: 100%;
+  }
+
   .admin-nav-container {
     flex-direction: column;
     gap: 1rem;
     padding: 1rem;
   }
+
   
   .admin-nav-menu {
     flex-wrap: wrap;

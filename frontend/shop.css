@@ -20,7 +20,39 @@
   position: sticky;
   top: 100px;
 }
+@media (max-width: 1000px) {
+  .shop-container {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
 
+  .shop-sidebar {
+    position: static;
+    width: 100%;
+    min-width: unset;
+    top: unset;
+    padding: 1.5rem;
+  }
+
+  .shop-main {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .shop-sidebar {
+    padding: 1rem;
+  }
+
+  .shop-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sort-options {
+    justify-content: space-between;
+  }
+}
 /* Sidebar Header */
 
 
