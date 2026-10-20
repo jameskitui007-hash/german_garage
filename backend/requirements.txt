@@ -100,3 +100,4 @@ watchfiles==1.1.1
 websockets==15.0.1
 wrapt==2.1.2
 cloudinary==1.36.0
+gunicorn==21.2.0
