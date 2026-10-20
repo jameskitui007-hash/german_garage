@@ -1,2 +1,3 @@
 #!/bin/bash
-gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 app.main:app
+cd /home/site/wwwroot
+gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 backend.app.main:app
